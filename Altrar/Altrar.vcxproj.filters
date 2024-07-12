@@ -1,75 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="ext">
-      <UniqueIdentifier>{7670880B-E279-887C-6BF5-9E7CD7FD937C}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ext\glm">
-      <UniqueIdentifier>{C545B382-3125-321E-3A3D-BDF4A69B987F}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ext\glm\detail">
-      <UniqueIdentifier>{E76DF6BA-D33B-EAC0-BCCF-5AE7A83CC625}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ext\glm\simd">
-      <UniqueIdentifier>{4105A2ED-2D68-3192-D6ED-6948C22FFD14}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src">
-      <UniqueIdentifier>{2DAB880B-99B4-887C-2230-9F7C8E38947C}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\Core">
-      <UniqueIdentifier>{A5D31CCF-91A0-77DA-BAB9-6582A6E5AC68}</UniqueIdentifier>
+    <Filter Include="Core">
+      <UniqueIdentifier>{2EB4837C-1AEB-840D-C3D7-6A10AFED000F}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ext\glm\simd\common.h">
-      <Filter>ext\glm\simd</Filter>
-    </ClInclude>
-    <ClInclude Include="ext\glm\simd\exponential.h">
-      <Filter>ext\glm\simd</Filter>
-    </ClInclude>
-    <ClInclude Include="ext\glm\simd\geometric.h">
-      <Filter>ext\glm\simd</Filter>
-    </ClInclude>
-    <ClInclude Include="ext\glm\simd\integer.h">
-      <Filter>ext\glm\simd</Filter>
-    </ClInclude>
-    <ClInclude Include="ext\glm\simd\matrix.h">
-      <Filter>ext\glm\simd</Filter>
-    </ClInclude>
-    <ClInclude Include="ext\glm\simd\neon.h">
-      <Filter>ext\glm\simd</Filter>
-    </ClInclude>
-    <ClInclude Include="ext\glm\simd\packing.h">
-      <Filter>ext\glm\simd</Filter>
-    </ClInclude>
-    <ClInclude Include="ext\glm\simd\platform.h">
-      <Filter>ext\glm\simd</Filter>
-    </ClInclude>
-    <ClInclude Include="ext\glm\simd\trigonometric.h">
-      <Filter>ext\glm\simd</Filter>
-    </ClInclude>
-    <ClInclude Include="ext\glm\simd\vector_relational.h">
-      <Filter>ext\glm\simd</Filter>
-    </ClInclude>
     <ClInclude Include="src\Core\ATRType.h">
-      <Filter>src\Core</Filter>
+      <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="src\atrpch.h">
-      <Filter>src</Filter>
-    </ClInclude>
+    <ClInclude Include="src\atrpch.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ext\glm\detail\glm.cpp">
-      <Filter>ext\glm\detail</Filter>
-    </ClCompile>
-    <ClCompile Include="ext\glm\glm.cppm">
-      <Filter>ext\glm</Filter>
-    </ClCompile>
-    <ClCompile Include="src\EntryPoint.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
-    <ClCompile Include="src\atrpch.cpp">
-      <Filter>src</Filter>
-    </ClCompile>
+    <ClCompile Include="src\EntryPoint.cpp" />
+    <ClCompile Include="src\atrpch.cpp" />
   </ItemGroup>
 </Project>

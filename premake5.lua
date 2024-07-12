@@ -12,7 +12,8 @@ outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 project "Altrar"    
     location "Altrar"
     kind "ConsoleApp"
-    language "C++"
+    language "c++"
+    cppdialect "c++20"
     
     targetdir ("bin/" .. outputdir .. "/%{prj.name}")
     objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
@@ -20,10 +21,12 @@ project "Altrar"
     pchheader "atrpch.h"
     pchsource "%{prj.name}/src/atrpch.cpp"
 
+    staticruntime "off"             -- set to off to avoid weird compatibility issues
+
     files
     {
-        "%{prj.name}/**.h",
-        "%{prj.name}/**.cpp"
+        "%{prj.name}/src/**.h",
+        "%{prj.name}/src/**.cpp"
     }
 
     includedirs
@@ -33,15 +36,26 @@ project "Altrar"
         "%{prj.name}/ext"
     }
 
+    libdirs
+    {
+        "%{prj.name}/ext/glfw/lib",
+        "%{prj.name}/ext/vulkan/lib"
+    }
+
+    links
+    {
+        "glfw3",
+        "vulkan-1"
+    }
+
     filter "system:Windows"
-        cppdialect "C++20"
-        staticruntime "On"
+        staticruntime "off"
         systemversion "latest"
 
     filter "configurations:Debug"
         defines "ATR_DEBUG"
-        symbols "On"
+        symbols "on"
 
     filter "configurations:Release"
         defines "ATR_RELEASE"
-        optimize "On"
+        optimize "on"

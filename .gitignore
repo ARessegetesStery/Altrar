@@ -31,3 +31,13 @@
 *.out
 *.app
 !vendor/bin/*.exe
+
+# Intermediate files
+.vs
+bin
+bin-int
+
+# Generated Viasual Studio Project Files
+*.sln
+*.vcxproj
+*.user

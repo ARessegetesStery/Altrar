@@ -38,8 +38,7 @@ project "Altrar"
 
     libdirs
     {
-        "%{prj.name}/ext/glfw/lib",
-        "%{prj.name}/ext/vulkan/lib"
+        "%{prj.name}/ext/_libs",
     }
 
     links

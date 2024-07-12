@@ -25,6 +25,7 @@
 *.la
 *.a
 *.lib
+!Altrar/ext/_libs/*.lib
 
 # Executables
 *.exe

@@ -5,10 +5,11 @@ workspace "Altrar"
         "Debug",   -- dev mode
         "Release"  -- release mode
     }
+    startproject "Altrar"
     
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
-project "Altrar"
+project "Altrar"    
     location "Altrar"
     kind "ConsoleApp"
     language "C++"
@@ -29,10 +30,11 @@ project "Altrar"
     {
         "%{prj.name}/src",
         "%{prj.name}/src/Core",
+        "%{prj.name}/ext"
     }
 
     filter "system:Windows"
-        cppdialect "C++17"
+        cppdialect "C++20"
         staticruntime "On"
         systemversion "latest"
 

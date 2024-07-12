@@ -7,8 +7,8 @@
 // Exception
 #include <exception>
 
-// Data Specification are in Core/ATRType.h
-#include "Core/ATRType.h"
+// Forward Constructions
+#include "atrfwd.h"
 
 // STL Containers
 #include <vector>
@@ -16,3 +16,6 @@
 // Vulkan-Related
 #include "vulkan/vulkan.h"
 #include "glfw/glfw3.h"
+
+// Exception
+#include "ATRException.h"

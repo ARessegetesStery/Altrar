@@ -3,13 +3,13 @@
 
 namespace ATR
 {
-	struct Config
-	{
-		UInt width, height;
+    struct Config
+    {
+        UInt width, height;
 
-		Config() : 
-			width(800), height(600)
-		{   }
-	};
+        Config() : 
+            width(800), height(600)
+        {   }
+    };
 
 }

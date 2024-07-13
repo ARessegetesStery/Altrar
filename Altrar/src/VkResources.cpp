@@ -27,6 +27,6 @@ namespace ATR
         };
 
         if (vkCreateInstance(&createInfo, nullptr, &this->instance) != VK_SUCCESS)
-			throw Exception("Failed to create instance", ExceptionType::INIT_VULKAN);
+            throw Exception("Failed to create instance", ExceptionType::INIT_VULKAN);
     }
 }

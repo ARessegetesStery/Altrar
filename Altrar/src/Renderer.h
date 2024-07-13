@@ -6,25 +6,25 @@
 
 namespace ATR
 {
-	class Renderer
-	{
-	public:
-		Renderer(const Config&);
+    class Renderer
+    {
+    public:
+        Renderer(const Config&);
 
-		void Run();
+        void Run();
 
-		// Major Components
-		void InitWindow();
-		void InitVulkan();				// Vulkan helpers are all in class `VkResources`
-		void Update();
-		void Cleanup();
+        // Major Components
+        void InitWindow();
+        void InitVulkan();				// Vulkan helpers are all in class `VkResources`
+        void Update();
+        void Cleanup();
 
-	private:
-		GLFWwindow* window;
+    private:
+        GLFWwindow* window;
 
-		VkResourceManager vkResources;
+        VkResourceManager vkResources;
 
-		const UInt width;
-		const UInt height;
-	};
+        const UInt width;
+        const UInt height;
+    };
 }

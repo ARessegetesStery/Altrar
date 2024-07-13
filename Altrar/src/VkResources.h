@@ -4,15 +4,15 @@
 
 namespace ATR
 {
-	class VkResourceManager
-	{
-	public:
-		VkResourceManager() = default;
+    class VkResourceManager
+    {
+    public:
+        VkResourceManager() = default;
 
-		void CreateInstance();
+        void CreateInstance();
 
-	private:
-		VkInstance instance;
-	};
+    private:
+        VkInstance instance;
+    };
 
 }

@@ -5,7 +5,7 @@ namespace ATR
 {
 	enum class ExceptionType
 	{
-		INIT
+		INIT_GLFW, INIT_VULKAN
 	};
 
 	class Exception
@@ -20,8 +20,12 @@ namespace ATR
 			String typeStr = "";
 			switch (this->type)
 			{
-			case ExceptionType::INIT:
-				typeStr += "[INIT]";
+			case ExceptionType::INIT_GLFW:
+				typeStr += "[INIT] (GLFW)";
+				break;
+			case ExceptionType::INIT_VULKAN:
+				typeStr += "[INIT] (VULKAN)";
+				break;
 			}
 
 			return typeStr + " " + this->msg;

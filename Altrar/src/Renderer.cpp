@@ -11,10 +11,17 @@ namespace ATR
 
 	void Renderer::Run()
 	{
-		InitWindow();
-		InitVulkan();
-		Update();
-		Cleanup();
+		try
+		{
+			InitWindow();
+			InitVulkan();
+			Update();
+			Cleanup();
+		}
+		catch(const Exception& e)
+		{
+			std::cerr << e.What() << std::endl;
+		}
 	}
 
 	void Renderer::InitWindow()
@@ -24,11 +31,12 @@ namespace ATR
 		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 		window = glfwCreateWindow(this->width, this->height, "Altrar", nullptr, nullptr);
 		if (!window)
-			throw Exception("Failed to create window", ExceptionType::INIT);
+			throw Exception("Failed to create window", ExceptionType::INIT_GLFW);
 	}
 
 	void Renderer::InitVulkan()
 	{
+		this->vkResources.CreateInstance();
 	}
 
 	void Renderer::Update()

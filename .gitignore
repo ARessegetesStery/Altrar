@@ -31,15 +31,17 @@
 *.exe
 *.out
 *.app
-!vendor/bin/premake5.exe
 
 # Intermediate files
-.vs
-bin
-bin-int
+/.vs
+/bin
+/bin-int
 
 # Generated Viasual Studio Project Files
 *.sln
 *.vcxproj
 *.vcxproj.user
 *.vcxproj.filters
+
+# Vendor Executables
+!vendor/bin/*.exe

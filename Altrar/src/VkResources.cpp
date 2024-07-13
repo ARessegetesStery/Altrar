@@ -23,7 +23,7 @@ namespace ATR
             .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             .pApplicationInfo = &appInfo,
             .enabledExtensionCount = glfwExtensionCount,
-            .ppEnabledExtensionNames = glfwExtensions,
+            .ppEnabledExtensionNames = glfwExtensions
         };
 
         if (vkCreateInstance(&createInfo, nullptr, &this->instance) != VK_SUCCESS)

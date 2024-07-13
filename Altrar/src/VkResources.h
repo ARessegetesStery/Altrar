@@ -9,7 +9,11 @@ namespace ATR
     public:
         VkResourceManager() = default;
 
+        // Initializing Vulkan
         void CreateInstance();
+
+        // Cleaning up
+        void CleanUp();
 
     private:
         VkInstance instance;

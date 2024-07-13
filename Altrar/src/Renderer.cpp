@@ -47,6 +47,8 @@ namespace ATR
 
     void Renderer::Cleanup()
     {
+        this->vkResources.CleanUp();
+
         glfwDestroyWindow(window);
         glfwTerminate();
     }

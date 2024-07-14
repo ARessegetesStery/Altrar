@@ -29,6 +29,7 @@ namespace ATR
     {
         ATR_LOG_PART("Initializing Renderer");
         ATR_LOG(this->config);
+        this->vkResources.AbsorbConfigs(this->config);
     }
 
     void Renderer::InitWindow()
@@ -45,7 +46,6 @@ namespace ATR
     void Renderer::InitVulkan()
     {
         ATR_LOG_PART("Initializing Vulkan");
-        this->vkResources.CheckExtensions(this->config.verbose);
         this->vkResources.CreateInstance();
     }
 

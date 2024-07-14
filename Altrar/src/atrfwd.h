@@ -6,3 +6,14 @@
 
 // Types
 #include "ATRType.h"
+
+// Global Defines
+#if defined ATR_DEBUG
+
+#define ATR_ENABLE_VALIDATION
+
+#elif defined ATR_RELEASE
+
+#undef ATR_ENABLE_VALIDATION
+
+#endif 

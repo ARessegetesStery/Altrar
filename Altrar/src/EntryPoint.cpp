@@ -6,8 +6,7 @@
 int main(int argc, char** argv)
 {
     ATR::Config config;
-
-    ATR::Renderer renderer(config);
+    ATR::Renderer renderer(std::move(config));
     renderer.Run();
 
     return 0;

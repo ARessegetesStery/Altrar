@@ -17,6 +17,7 @@ namespace ATR
     using Char = char8_t;
     using Bool = bool;
     using String = std::string;
+    using Float = float;
 
     // Common GLM Types
     using Vec2 = glm::vec2;

@@ -4,15 +4,16 @@
 namespace ATR
 {
 
-    Renderer::Renderer(const Config& config) : 
+    Renderer::Renderer(Config&& config) : 
         window(nullptr),
-        width(config.width), height(config.height)
+        config(std::move(config))
     {  }
 
     void Renderer::Run()
     {
         try
         {
+            InitRenderer();
             InitWindow();
             InitVulkan();
             Update();
@@ -20,22 +21,31 @@ namespace ATR
         }
         catch(const Exception& e)
         {
-            std::cerr << e.What() << std::endl;
+            ATR_ERROR(e.What())
         }
+    }
+
+    void Renderer::InitRenderer()
+    {
+        ATR_LOG_PART("Initializing Renderer");
+        ATR_LOG(this->config);
     }
 
     void Renderer::InitWindow()
     {
+        ATR_LOG_PART("Initializing Window");
         glfwInit();
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-        window = glfwCreateWindow(this->width, this->height, "Altrar", nullptr, nullptr);
+        window = glfwCreateWindow(this->config.width, this->config.height, "Altrar", nullptr, nullptr);
         if (!window)
             throw Exception("Failed to create window", ExceptionType::INIT_GLFW);
     }
 
     void Renderer::InitVulkan()
     {
+        ATR_LOG_PART("Initializing Vulkan");
+        this->vkResources.CheckExtensions(this->config.verbose);
         this->vkResources.CreateInstance();
     }
 

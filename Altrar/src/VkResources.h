@@ -10,6 +10,7 @@ namespace ATR
         VkResourceManager() = default;
 
         // Initializing Vulkan
+        void CheckExtensions(Bool print);
         void CreateInstance();
 
         // Cleaning up

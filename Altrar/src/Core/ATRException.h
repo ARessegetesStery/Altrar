@@ -1,10 +1,12 @@
 #pragma once
+
 #include "ATRType.h"
 
 namespace ATR
 {
     enum class ExceptionType
     {
+        INIT_RENDERER,
         INIT_GLFW, INIT_VULKAN
     };
 

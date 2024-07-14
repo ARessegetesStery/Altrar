@@ -9,11 +9,12 @@ namespace ATR
     class Renderer
     {
     public:
-        Renderer(const Config&);
+        Renderer(Config&&);
 
         void Run();
 
         // Major Components
+        void InitRenderer();
         void InitWindow();
         void InitVulkan();				// Vulkan helpers are all in class `VkResources`
         void Update();
@@ -22,9 +23,8 @@ namespace ATR
     private:
         GLFWwindow* window;
 
+        Config config;
         VkResourceManager vkResources;
 
-        const UInt width;
-        const UInt height;
     };
 }

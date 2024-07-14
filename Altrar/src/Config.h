@@ -6,11 +6,13 @@ namespace ATR
     struct Config
     {
         UInt width, height;
+        Bool enableValidation;
         Bool verbose;
         std::vector<String> validationLayers;
 
         Config() : 
             width(800), height(600),
+            enableValidation(true),
             verbose(true),
             validationLayers({"VK_LAYER_KHRONOS_validation"})
         {   }

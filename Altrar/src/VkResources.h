@@ -20,9 +20,12 @@ namespace ATR
         void CleanUp();
 
     private:
+        // Configs
         Bool verbose;
+        Bool enableValidation;
         std::vector<const char*> validationLayerNames;
 
+        // Vulkan Resources
         VkInstance instance;
     };
 

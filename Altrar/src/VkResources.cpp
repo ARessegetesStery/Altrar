@@ -28,43 +28,45 @@ namespace ATR
                 for (const auto& extension : extensions)
                     ATR_PRINT(String("- ") + extension.extensionName)
 
-            ATR_LOG_SECTION("Vulkan Required Extensions: (" + std::to_string(requiredExtensionCount) + ")")
-                for (UInt i = 0; i != requiredExtensionCount; ++i)
-                    ATR_PRINT(String("- ") + reqExtensions[i])
+                    ATR_LOG_SECTION("Vulkan Required Extensions: (" + std::to_string(requiredExtensionCount) + ")")
+                    for (UInt i = 0; i != requiredExtensionCount; ++i)
+                        ATR_PRINT(String("- ") + reqExtensions[i])
         }
 
         // Check if all required extensions are available
         for (UInt i = 0; i != requiredExtensionCount; ++i)
-            if (std::find_if(extensions.begin(), extensions.end(), 
+            if (std::find_if(extensions.begin(), extensions.end(),
                 [&](const VkExtensionProperties& ext) { return strcmp(ext.extensionName, reqExtensions[i]) == 0; }
             ) == extensions.cend())
                 throw Exception("Required extension not found: " + String(reqExtensions[i]), ExceptionType::INIT_VULKAN);
-    
-#if defined ATR_ENABLE_VALIDATION
-        UInt validatedLayerCount = 0;
-        vkEnumerateInstanceLayerProperties(&validatedLayerCount, nullptr);
 
-        std::vector<VkLayerProperties> validatedLayers(validatedLayerCount);
-        vkEnumerateInstanceLayerProperties(&validatedLayerCount, validatedLayers.data());
-
-        if (this->verbose)
+        /// Deal with Validation Layers 
+        if (enableValidation)
         {
-            ATR_LOG_SECTION("Vulkan Available Layers: (" + std::to_string(validatedLayerCount) + ")")
-            for (const auto& layer : validatedLayers)
-                ATR_PRINT(String("- ") + layer.layerName)
+            UInt validatedLayerCount = 0;
+            vkEnumerateInstanceLayerProperties(&validatedLayerCount, nullptr);
 
-            ATR_LOG_SECTION("Vulkan Required Layers: (" + std::to_string(this->validationLayerNames.size()) + ")")
-            for (const auto& layer : this->validationLayerNames)
-                ATR_PRINT(String("- ") + layer)
+            std::vector<VkLayerProperties> validatedLayers(validatedLayerCount);
+            vkEnumerateInstanceLayerProperties(&validatedLayerCount, validatedLayers.data());
+
+            if (this->verbose)
+            {
+                ATR_LOG_SECTION("Vulkan Available Layers: (" + std::to_string(validatedLayerCount) + ")")
+                    for (const auto& layer : validatedLayers)
+                        ATR_PRINT(String("- ") + layer.layerName)
+
+                        ATR_LOG_SECTION("Vulkan Required Layers: (" + std::to_string(this->validationLayerNames.size()) + ")")
+                        for (const auto& layer : this->validationLayerNames)
+                            ATR_PRINT(String("- ") + layer)
+            }
+
+            // Check if all validation layers are available
+            for (auto& layerName : this->validationLayerNames)
+                if (std::find_if(validatedLayers.begin(), validatedLayers.end(),
+                    [&](const VkLayerProperties& layer) { return strcmp(layer.layerName, layerName) == 0; }
+                ) == validatedLayers.cend())
+                    throw Exception("Validation layer " + String(layerName) + " not found", ExceptionType::INIT_VULKAN);
         }
-
-        // Check if all validation layers are available
-        for (auto& layerName : this->validationLayerNames)
-            if (std::find_if(validatedLayers.begin(), validatedLayers.end(), 
-                [&](const VkLayerProperties& layer) { return strcmp(layer.layerName, layerName) == 0; }
-            ) == validatedLayers.cend())
-                throw Exception("Validation layer " + String(layerName)  + " not found", ExceptionType::INIT_VULKAN);
-#endif
 
         VkApplicationInfo appInfo =
         {
@@ -82,16 +84,17 @@ namespace ATR
         {
             .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             .pApplicationInfo = &appInfo,
-#if defined ATR_ENABLE_VALIDATION
-            .enabledLayerCount = 1,
-            .ppEnabledLayerNames = this->validationLayerNames.data(),
-#else
-            .enabledLayerCount = 0,
-#endif 
             .enabledExtensionCount = glfwExtensionCount,
-            .ppEnabledExtensionNames = glfwExtensions,
-
+            .ppEnabledExtensionNames = glfwExtensions
         };
+
+        if (enableValidation)
+        {
+            createInfo.enabledLayerCount = this->validationLayerNames.size();
+            createInfo.ppEnabledLayerNames = this->validationLayerNames.data();
+        }
+        else
+            createInfo.enabledLayerCount = 0;
 
         if (vkCreateInstance(&createInfo, nullptr, &this->instance) != VK_SUCCESS)
             throw Exception("Failed to create instance", ExceptionType::INIT_VULKAN);

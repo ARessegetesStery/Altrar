@@ -8,11 +8,12 @@ namespace ATR
     {
         this->verbose = config.verbose;
         for (const String& layerName : config.validationLayers)
-            this->validationLayerNames.push_back(layerName.c_str());
+            this->validationLayers.push_back(layerName.c_str());
     }
 
     void VkResourceManager::CreateInstance()
     {
+        /// Extensions
         UInt extensionCount = 0;
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
 
@@ -20,27 +21,31 @@ namespace ATR
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
 
         UInt requiredExtensionCount = 0;
-        const char** reqExtensions = glfwGetRequiredInstanceExtensions(&requiredExtensionCount);
+        const char** requiredExtensionNames = glfwGetRequiredInstanceExtensions(&requiredExtensionCount);
+
+        std::vector<const char*> requiredExtensions(requiredExtensionNames, requiredExtensionNames + requiredExtensionCount);
+        if (enableValidation)
+            requiredExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
         if (this->verbose)
         {
             ATR_LOG_SECTION("Vulkan Available Extensions: (" + std::to_string(extensionCount) + ")")
-                for (const auto& extension : extensions)
-                    ATR_PRINT(String("- ") + extension.extensionName)
+            for (const auto& extension : extensions)
+                ATR_PRINT(String("- ") + extension.extensionName)
 
-                    ATR_LOG_SECTION("Vulkan Required Extensions: (" + std::to_string(requiredExtensionCount) + ")")
-                    for (UInt i = 0; i != requiredExtensionCount; ++i)
-                        ATR_PRINT(String("- ") + reqExtensions[i])
+            ATR_LOG_SECTION("Vulkan Required Extensions: (" + std::to_string(requiredExtensionCount) + ")")
+            for (UInt i = 0; i != requiredExtensionCount; ++i)
+                ATR_PRINT(String("- ") + requiredExtensionNames[i])
         }
 
         // Check if all required extensions are available
         for (UInt i = 0; i != requiredExtensionCount; ++i)
             if (std::find_if(extensions.begin(), extensions.end(),
-                [&](const VkExtensionProperties& ext) { return strcmp(ext.extensionName, reqExtensions[i]) == 0; }
+                [&](const VkExtensionProperties& ext) { return strcmp(ext.extensionName, requiredExtensionNames[i]) == 0; }
             ) == extensions.cend())
-                throw Exception("Required extension not found: " + String(reqExtensions[i]), ExceptionType::INIT_VULKAN);
+                throw Exception("Required extension not found: " + String(requiredExtensionNames[i]), ExceptionType::INIT_VULKAN);
 
-        /// Deal with Validation Layers 
+        /// Validation Layers 
         if (enableValidation)
         {
             UInt validatedLayerCount = 0;
@@ -52,16 +57,16 @@ namespace ATR
             if (this->verbose)
             {
                 ATR_LOG_SECTION("Vulkan Available Layers: (" + std::to_string(validatedLayerCount) + ")")
-                    for (const auto& layer : validatedLayers)
-                        ATR_PRINT(String("- ") + layer.layerName)
+                for (const auto& layer : validatedLayers)
+                    ATR_PRINT(String("- ") + layer.layerName)
 
-                        ATR_LOG_SECTION("Vulkan Required Layers: (" + std::to_string(this->validationLayerNames.size()) + ")")
-                        for (const auto& layer : this->validationLayerNames)
-                            ATR_PRINT(String("- ") + layer)
+                ATR_LOG_SECTION("Vulkan Required Layers: (" + std::to_string(this->validationLayers.size()) + ")")
+                for (const auto& layer : this->validationLayers)
+                    ATR_PRINT(String("- ") + layer)
             }
 
             // Check if all validation layers are available
-            for (auto& layerName : this->validationLayerNames)
+            for (auto& layerName : this->validationLayers)
                 if (std::find_if(validatedLayers.begin(), validatedLayers.end(),
                     [&](const VkLayerProperties& layer) { return strcmp(layer.layerName, layerName) == 0; }
                 ) == validatedLayers.cend())
@@ -78,20 +83,18 @@ namespace ATR
             .apiVersion = VK_API_VERSION_1_0
         };
 
-        UInt glfwExtensionCount = 0;
-        const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
         VkInstanceCreateInfo createInfo =
         {
             .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             .pApplicationInfo = &appInfo,
-            .enabledExtensionCount = glfwExtensionCount,
-            .ppEnabledExtensionNames = glfwExtensions
+            .enabledExtensionCount = requiredExtensionCount,
+            .ppEnabledExtensionNames = requiredExtensions.data()
         };
 
         if (enableValidation)
         {
-            createInfo.enabledLayerCount = this->validationLayerNames.size();
-            createInfo.ppEnabledLayerNames = this->validationLayerNames.data();
+            createInfo.enabledLayerCount = this->validationLayers.size();
+            createInfo.ppEnabledLayerNames = this->validationLayers.data();
         }
         else
             createInfo.enabledLayerCount = 0;

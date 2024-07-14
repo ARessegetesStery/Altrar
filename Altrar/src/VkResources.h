@@ -23,7 +23,7 @@ namespace ATR
         // Configs
         Bool verbose;
         Bool enableValidation;
-        std::vector<const char*> validationLayerNames;
+        std::vector<const char*> validationLayers;
 
         // Vulkan Resources
         VkInstance instance;

@@ -46,7 +46,7 @@ namespace ATR
     void Renderer::InitVulkan()
     {
         ATR_LOG_PART("Initializing Vulkan");
-        this->vkResources.CreateInstance();
+        this->vkResources.Init();
     }
 
     void Renderer::Update()

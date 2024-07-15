@@ -22,15 +22,16 @@ namespace ATR
         friend std::ostream& operator<< (std::ostream& os, Config const& config)
         {
             String layerStr;
+            String indent = "    ";
             for (const auto& layer : config.validationLayers)
-                layerStr += layer + ", \n\t";
+                layerStr += layer + ", \n" + indent;
             layerStr = layerStr.substr(0, layerStr.size() - 4);
 
             return os <<
                 "Width: " << config.width << ", " <<
                 "Height: " << config.height << "\n" <<
                 "Verbose: " << (config.verbose == true ? "true" : "false") << "\n" <<
-                "Validation Layers: \n\t" << layerStr;
+                "Validation Layers: \n" << indent << layerStr;
         }
     };
 

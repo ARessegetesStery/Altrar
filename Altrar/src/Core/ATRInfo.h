@@ -13,12 +13,6 @@ namespace ATR
 
 #if not defined ATR_OUTPUT_SILENT
 
-#define ATR_COLOR_NC "\e[0m"
-#define ATR_COLOR_RED "\e[0;31m"
-#define ATR_COLOR_GRN "\e[0;32m"
-#define ATR_COLOR_CYN "\e[0;36m"
-#define ATR_COLOR_REDB "\e[41m"
-
 #define ATR_PRINT(x) {std::cout << x << std::endl;}
 
 // The Logged `x` must be of type which has operator<< defined. Do not append the lagging '\n' to the output of `x`
@@ -30,7 +24,14 @@ namespace ATR
 #define ATR_LOG_SECTION(name) {std::cout << "----------------------" << \
 	std::left << std::setfill('-') << std::setw(60) << name << std::endl;}
 
-#define ATR_ERROR(x) {std::cerr << ATR_COLOR_REDB << "[ERROR] " << ATR_COLOR_NC << x << std::endl;}
+#ifdef _WIN32
+#include <windows.h>
+#define ATR_ERROR(x) {HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE); \
+	SetConsoleTextAttribute(hConsole, 12); \
+	std::cout << "[ERROR] "; \
+	SetConsoleTextAttribute(hConsole, 7); \
+	std::cout << x << std::endl;}
+#endif
 
 #endif
 

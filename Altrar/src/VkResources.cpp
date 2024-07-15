@@ -11,6 +11,20 @@ namespace ATR
             this->validationLayers.push_back(layerName.c_str());
     }
 
+    void VkResourceManager::Init()
+    {
+        this->CreateInstance();
+        this->SetupDebugMessenger();
+    }
+
+    void VkResourceManager::CleanUp()
+    {
+        //if (enabledValidation)
+            //this->DestroyDebugUtilsMessengerEXT(this->instance, this->debugMessenger, nullptr);
+
+        vkDestroyInstance(this->instance, nullptr);
+    }
+
     void VkResourceManager::CreateInstance()
     {
         /// Extensions
@@ -24,7 +38,7 @@ namespace ATR
         const char** requiredExtensionNames = glfwGetRequiredInstanceExtensions(&requiredExtensionCount);
 
         std::vector<const char*> requiredExtensions(requiredExtensionNames, requiredExtensionNames + requiredExtensionCount);
-        if (enableValidation)
+        if (enabledValidation)
             requiredExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
         if (this->verbose)
@@ -34,8 +48,8 @@ namespace ATR
                 ATR_PRINT(String("- ") + extension.extensionName)
 
             ATR_LOG_SECTION("Vulkan Required Extensions: (" + std::to_string(requiredExtensionCount) + ")")
-            for (UInt i = 0; i != requiredExtensionCount; ++i)
-                ATR_PRINT(String("- ") + requiredExtensionNames[i])
+            for (const auto& extension : requiredExtensions)
+                ATR_PRINT(String("- ") + extension)
         }
 
         // Check if all required extensions are available
@@ -46,7 +60,7 @@ namespace ATR
                 throw Exception("Required extension not found: " + String(requiredExtensionNames[i]), ExceptionType::INIT_VULKAN);
 
         /// Validation Layers 
-        if (enableValidation)
+        if (enabledValidation)
         {
             UInt validatedLayerCount = 0;
             vkEnumerateInstanceLayerProperties(&validatedLayerCount, nullptr);
@@ -83,18 +97,33 @@ namespace ATR
             .apiVersion = VK_API_VERSION_1_0
         };
 
+        VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo =
+        {
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+            .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+                VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+            .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+            .pfnUserCallback = DebugCallback,
+            .pUserData = nullptr
+        };
+
         VkInstanceCreateInfo createInfo =
         {
             .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             .pApplicationInfo = &appInfo,
-            .enabledExtensionCount = requiredExtensionCount,
+            .enabledExtensionCount = static_cast<UInt>(requiredExtensions.size()),
             .ppEnabledExtensionNames = requiredExtensions.data()
         };
 
-        if (enableValidation)
+        if (enabledValidation)
         {
-            createInfo.enabledLayerCount = this->validationLayers.size();
+            createInfo.enabledLayerCount = static_cast<UInt>(this->validationLayers.size());
             createInfo.ppEnabledLayerNames = this->validationLayers.data();
+
+            createInfo.pNext = &debugMessengerCreateInfo;
         }
         else
             createInfo.enabledLayerCount = 0;
@@ -103,8 +132,67 @@ namespace ATR
             throw Exception("Failed to create instance", ExceptionType::INIT_VULKAN);
     }
 
-    void VkResourceManager::CleanUp()
+    void VkResourceManager::SetupDebugMessenger()
     {
-        vkDestroyInstance(this->instance, nullptr);
+        if (!this->enabledValidation)
+            return;
+
+        VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+            VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+        createInfo.pfnUserCallback = DebugCallback;
+        createInfo.pUserData = nullptr;
+
+        if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS)
+            throw Exception("Failed to set up debug messenger", ExceptionType::INIT_VULKAN);
+    }
+
+    VKAPI_ATTR VkBool32 VKAPI_CALL VkResourceManager::DebugCallback(\
+        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, 
+        VkDebugUtilsMessageTypeFlagsEXT messageType, 
+        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, 
+        void* pUserData
+    )
+    {
+        if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+            ATR_ERROR(String("[Validation Layer] ") + pCallbackData->pMessage)
+        else
+            ATR_PRINT(String("[Validation Layer] ") + pCallbackData->pMessage)
+
+        return VK_FALSE;
+    }
+
+    VkResult VkResourceManager::CreateDebugUtilsMessengerEXT(VkInstance instance, 
+        const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, 
+        const VkAllocationCallbacks* pAllocator, 
+        VkDebugUtilsMessengerEXT* pDebugMessenger
+    )
+    {
+        auto func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+        if (func == nullptr)
+            return VK_ERROR_EXTENSION_NOT_PRESENT;
+        else
+            return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+    }
+
+    VkResult VkResourceManager::DestroyDebugUtilsMessengerEXT(
+        VkInstance instance, 
+        VkDebugUtilsMessengerEXT debugMessenger, 
+        const VkAllocationCallbacks* pAllocator
+    )
+    {
+        auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+        if (func != nullptr)
+        {
+            func(instance, debugMessenger, pAllocator);
+            return VK_SUCCESS;
+        }
+        else
+            return VK_ERROR_EXTENSION_NOT_PRESENT;
     }
 }

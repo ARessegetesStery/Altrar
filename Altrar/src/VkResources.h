@@ -19,10 +19,15 @@ namespace ATR
         void CreateInstance();
         void SetupDebugMessenger();
 
+        void GetRequiredExtensions();
+        void FindValidationLayers();                            // Validation Layers are specified by the user, not infrastructure
+        VkInstanceCreateInfo GetInstanceInfo();
+
         // Cleaning up
         void CleanUp();
 
-        // Helpers
+        /// Helpers
+        // Init
         static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
             VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
             VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -44,11 +49,25 @@ namespace ATR
         // Configs
         Bool verbose;
         Bool enabledValidation;
+        std::vector<const char*> requiredExtensions;
         std::vector<const char*> validationLayers;
 
         // Vulkan Resources
         VkInstance instance;
         VkDebugUtilsMessengerEXT debugMessenger;
+
+        // Default Vulkan Configs
+        static inline VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+            .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+                VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+            .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+            .pfnUserCallback = VkResourceManager::DebugCallback,
+            .pUserData = nullptr
+        };
     };
 
 }

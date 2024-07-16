@@ -4,6 +4,7 @@
 // All Logging functions should be inlined as this header is included multiple times throughout the project
 
 #include "ATRType.h"
+#include "ATROSSpec.h"
 
 #include <iostream>
 #include <iomanip>
@@ -24,14 +25,11 @@ namespace ATR
 #define ATR_LOG_SECTION(name) {std::cout << "----------------------" << \
 	std::left << std::setfill('-') << std::setw(60) << name << std::endl;}
 
-#ifdef _WIN32
-#include <windows.h>
-#define ATR_ERROR(x) {HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE); \
-	SetConsoleTextAttribute(hConsole, 12); \
+#define ATR_ERROR(x) { \
+	OS_ChangeConsoleColor(12); \
 	std::cout << "[ERROR] "; \
-	SetConsoleTextAttribute(hConsole, 7); \
+	OS_ChangeConsoleColor(7); \
 	std::cout << x << std::endl;}
-#endif
 
 #endif
 

@@ -24,8 +24,9 @@ namespace ATR
             return os <<
                 "Width: " << config.width << ", " <<
                 "Height: " << config.height << "\n" <<
-                "Verbose: " << (config.verbose == true ? "true" : "false") << "\n" <<
-                "Enable Validation: " << (config.enableValidation == true ? "true" : "false") << "\n" <<
+                std::boolalpha <<                               // print bools as true/false
+                "Verbose: " << config.verbose << "\n" <<
+                "Enable Validation: " << config.enableValidation << "\n" <<
                 "Validation Layers: \n" << indent << layerStr;
         }
     };

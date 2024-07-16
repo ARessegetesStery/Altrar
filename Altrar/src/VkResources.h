@@ -1,7 +1,7 @@
 #pragma once
 #include "atrpch.h"
 
-#include "Config.h"
+#include "Loader/Config/Config.h"
 
 namespace ATR
 {
@@ -21,7 +21,6 @@ namespace ATR
 
         void GetRequiredExtensions();
         void FindValidationLayers();                            // Validation Layers are specified by the user, not infrastructure
-        VkInstanceCreateInfo GetInstanceInfo();
 
         // Cleaning up
         void CleanUp();

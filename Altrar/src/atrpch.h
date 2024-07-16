@@ -3,6 +3,7 @@
 
 // Streams
 #include <iostream>
+#include <fstream>
 
 // Exception
 #include <exception>

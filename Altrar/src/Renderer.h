@@ -1,7 +1,7 @@
 #pragma once
 #include "atrfwd.h"
 
-#include "Config.h"
+#include "Loader/Config/Config.h"
 #include "VkResources.h"
 
 namespace ATR

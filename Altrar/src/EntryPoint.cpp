@@ -1,6 +1,6 @@
 #include "atrpch.h"
 
-#include "Config.h"
+#include "Loader/Config/Config.h"
 #include "Renderer.h"
 
 int main(int argc, char** argv)

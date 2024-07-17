@@ -15,6 +15,7 @@ namespace ATR
     {
         this->CreateInstance();
         this->SetupDebugMessenger();
+        this->SelectPhysicalDevice();
     }
 
     void VkResourceManager::CleanUp()
@@ -71,6 +72,37 @@ namespace ATR
 
         if (CreateDebugUtilsMessengerEXT(instance, &VkResourceManager::defaultDebugMessengerCreateInfo, nullptr, &debugMessenger) != VK_SUCCESS)
             throw Exception("Failed to set up debug messenger", ExceptionType::INIT_VULKAN);
+    }
+
+    void VkResourceManager::SelectPhysicalDevice()
+    {
+        this->physicalDevice = VK_NULL_HANDLE;
+        UInt physicalDeviceCount = 0;
+        vkEnumeratePhysicalDevices(this->instance, &physicalDeviceCount, nullptr);
+
+        std::vector<VkPhysicalDevice> availablePhysicalDevices(physicalDeviceCount);
+        vkEnumeratePhysicalDevices(this->instance, &physicalDeviceCount, availablePhysicalDevices.data());
+
+        if (availablePhysicalDevices.size() == 0)
+            throw Exception("No available GPU Found.", ExceptionType::INIT_VULKAN);
+
+        for (auto& device : availablePhysicalDevices)
+        {
+            if (DeviceSuitable(device))
+            {
+                this->physicalDevice = device;
+                break;
+            }
+            throw Exception("No Suitable GPU Found.", ExceptionType::INIT_VULKAN);
+        }
+
+        if (this->verbose)
+        {
+            ATR_LOG_SECTION("Selecting Physical Devices")
+            VkPhysicalDeviceProperties deviceProperties;
+            vkGetPhysicalDeviceProperties(this->physicalDevice, &deviceProperties);
+            ATR_PRINT("Using Physical Device: " + String(deviceProperties.deviceName))
+        }
     }
 
     VKAPI_ATTR VkBool32 VKAPI_CALL VkResourceManager::DebugCallback(\
@@ -184,5 +216,36 @@ namespace ATR
                 ) == availableValidatedLayers.cend())
                     throw Exception("Validation layer " + String(layerName) + " not found", ExceptionType::INIT_VULKAN);
         }
+    }
+
+    Bool VkResourceManager::DeviceSuitable(VkPhysicalDevice device)
+    {
+        QueueFamilyIndices indices = FindQueueFamilies(device);
+
+        if (indices.Complete())
+            return true;
+        return false;
+    }
+
+    QueueFamilyIndices VkResourceManager::FindQueueFamilies(VkPhysicalDevice device)
+    {
+        QueueFamilyIndices indices;
+        
+        UInt queueFamilyCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+        for (UInt i = 0; i != queueFamilies.size(); ++i)
+        {
+            if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+                indices.graphicsFamily = i;
+
+            if (indices.Complete())
+                break;
+        }
+
+        return indices;
     }
 }

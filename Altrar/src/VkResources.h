@@ -3,6 +3,8 @@
 
 #include "Loader/Config/Config.h"
 
+#include "VkInfos/QueueFamilyIndices.h"
+
 namespace ATR
 {
     class VkResourceManager
@@ -18,9 +20,13 @@ namespace ATR
 
         void CreateInstance();
         void SetupDebugMessenger();
+        void SelectPhysicalDevice();
 
         void GetRequiredExtensions();
         void FindValidationLayers();                            // Validation Layers are specified by the user, not infrastructure
+
+        Bool DeviceSuitable(VkPhysicalDevice device);
+        QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device);
 
         // Cleaning up
         void CleanUp();
@@ -54,6 +60,8 @@ namespace ATR
         // Vulkan Resources
         VkInstance instance;
         VkDebugUtilsMessengerEXT debugMessenger;
+
+        VkPhysicalDevice physicalDevice;
 
         // Default Vulkan Configs
         static inline VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerCreateInfo = {

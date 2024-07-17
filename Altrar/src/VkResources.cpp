@@ -77,8 +77,8 @@ namespace ATR
         {
             .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             .pApplicationInfo = &appInfo,
-            .enabledExtensionCount = static_cast<UInt>(this->requiredExtensions.size()),
-            .ppEnabledExtensionNames = this->requiredExtensions.data()
+            .enabledExtensionCount = static_cast<UInt>(this->instanceExtensions.size()),
+            .ppEnabledExtensionNames = this->instanceExtensions.data()
         };
 
         if (enabledValidation)
@@ -237,7 +237,7 @@ namespace ATR
 
     void VkResourceManager::GetRequiredExtensions()
     {
-        this->requiredExtensions.clear();
+        this->instanceExtensions.clear();
 
         UInt extensionCount = 0;
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
@@ -249,10 +249,10 @@ namespace ATR
         const char** requiredExtensionNames = glfwGetRequiredInstanceExtensions(&requiredExtensionCount);
 
         for (UInt i = 0; i != requiredExtensionCount; ++i)
-            this->requiredExtensions.push_back(requiredExtensionNames[i]);
+            this->instanceExtensions.push_back(requiredExtensionNames[i]);
 
         if (enabledValidation)
-            requiredExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+            instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
         if (VkResourceManager::verbose)
         {
@@ -260,8 +260,8 @@ namespace ATR
             for (const auto& extension : extensions)
                 ATR_PRINT(String("- ") + extension.extensionName)
 
-            ATR_LOG_SECTION("Vulkan Required Extensions: (" + std::to_string(requiredExtensions.size()) + ")")
-            for (const auto& extension : requiredExtensions)
+            ATR_LOG_SECTION("Vulkan Required Extensions: (" + std::to_string(instanceExtensions.size()) + ")")
+            for (const auto& extension : instanceExtensions)
                 ATR_PRINT(String("- ") + extension)
         }
 
@@ -307,8 +307,15 @@ namespace ATR
     Bool VkResourceManager::DeviceSuitable(VkPhysicalDevice device)
     {
         FindQueueFamilies(device);
+        Bool deviceExtensionSupport = CheckDeviceExtensionSupport(device);
+        QuerySwapChainSupport(device);
 
-        if (this->queueIndices.Complete())
+        Bool suitable =
+            this->queueIndices.Complete() &&
+            deviceExtensionSupport &&
+            this->swapChainSupport.Adequate();
+
+        if (suitable)
             return true;
         return false;
     }
@@ -333,6 +340,51 @@ namespace ATR
 
             if (this->queueIndices.Complete())
                 break;
+        }
+    }
+
+    Bool VkResourceManager::CheckDeviceExtensionSupport(VkPhysicalDevice device)
+    {
+        UInt deviceExtensionCount = 0;
+        vkEnumerateDeviceExtensionProperties(device, nullptr, &deviceExtensionCount, nullptr);
+
+        std::vector<VkExtensionProperties> availableDeviceExtensions(deviceExtensionCount);
+        vkEnumerateDeviceExtensionProperties(device, nullptr, &deviceExtensionCount, availableDeviceExtensions.data());
+
+        for (auto& extensionName : this->deviceExtensions)
+        {
+            if (std::find_if(availableDeviceExtensions.begin(), availableDeviceExtensions.end(),
+                [&](const VkExtensionProperties& ext) { return strcmp(ext.extensionName, extensionName) == 0; }
+            ) == availableDeviceExtensions.cend())
+                return false;
+        }
+
+        return true;
+    }
+
+    void VkResourceManager::QuerySwapChainSupport(VkPhysicalDevice device)
+    {
+        // Capabilities
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, this->surface, &this->swapChainSupport.capabilities);
+
+        // Formats
+        UInt formatCount = 0;
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, this->surface, &formatCount, nullptr);
+
+        if (formatCount != 0)
+        {
+            this->swapChainSupport.formats.resize(formatCount);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(device, this->surface, &formatCount, this->swapChainSupport.formats.data());
+        }
+
+        // Present Modes
+        UInt presentModeCount = 0;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, this->surface, &presentModeCount, nullptr);
+
+        if (presentModeCount != 0)
+        {
+            this->swapChainSupport.presentModes.resize(presentModeCount);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(device, this->surface, &presentModeCount, this->swapChainSupport.presentModes.data());
         }
     }
 }

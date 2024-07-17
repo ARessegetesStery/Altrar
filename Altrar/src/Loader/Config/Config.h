@@ -17,16 +17,16 @@ namespace ATR
         {
             String layerStr = "";
             for (const auto& layer : config.validationLayers)
-                layerStr += layer + "\n" + Format::indent;
+                layerStr += layer + "\n" + Format::subitem;
             layerStr = layerStr.substr(0, layerStr.size() - 4);
 
             return os <<
-                Format::smallIndent << "Width: " << config.width << ", " <<
-                Format::smallIndent << "Height: " << config.height << "\n" <<
+                Format::item << "Width: " << config.width << ", " <<
+                Format::item << "Height: " << config.height << "\n" <<
                 std::boolalpha <<   // print bools as true/false
-                Format::smallIndent << "Verbose: " << config.verbose << "\n" <<
-                Format::smallIndent << "Enable Validation: " << config.enableValidation << "\n" <<
-                Format::smallIndent << "Validation Layers: \n" << Format::indent << layerStr;
+                Format::item << "Verbose: " << config.verbose << "\n" <<
+                Format::item << "Enable Validation: " << config.enableValidation << "\n" <<
+                Format::item << "Validation Layers: \n" << Format::subitem << layerStr;
         }
     };
 

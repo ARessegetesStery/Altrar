@@ -36,8 +36,8 @@ namespace ATR
 
 	struct Format
 	{
-		static inline String indent = "  - ";
-		static inline String smallIndent = "- ";
+		static inline String subitem = "  - ";
+		static inline String item = "- ";
 	};
 
 }

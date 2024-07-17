@@ -4,6 +4,7 @@
 #include "Loader/Config/Config.h"
 
 #include "VkInfos/QueueFamilyIndices.h"
+#include "VkInfos/SwapChainSupport.h"
 
 namespace ATR
 {
@@ -28,12 +29,6 @@ namespace ATR
         void SelectPhysicalDevice();
         void CreateLogicalDevice();
 
-        void GetRequiredExtensions();
-        void FindValidationLayers();                            // Validation Layers are specified by the user, not infrastructure
-
-        Bool DeviceSuitable(VkPhysicalDevice device);
-        void FindQueueFamilies(VkPhysicalDevice device);
-
         /// Helpers
         // Init
         static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
@@ -53,23 +48,42 @@ namespace ATR
             const VkAllocationCallbacks* pAllocator
         );
 
+        void GetRequiredExtensions();
+        void FindValidationLayers();                            // Validation Layers are specified by the user, not infrastructure
+
+        Bool DeviceSuitable(VkPhysicalDevice device);
+        void FindQueueFamilies(VkPhysicalDevice device);
+        Bool CheckDeviceExtensionSupport(VkPhysicalDevice device);
+        void QuerySwapChainSupport(VkPhysicalDevice device);
+
     private:
         // Configs
         inline static Bool verbose = false;
         UInt width, height;
         Bool enabledValidation;
-        std::vector<const char*> requiredExtensions;
+        std::vector<const char*> instanceExtensions;
         std::vector<const char*> validationLayers;
 
-        // Vulkan Resources
+        const std::vector<const char*> deviceExtensions = {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME
+        };
+
+        /// Vulkan Resources
+        // Top-level Vulkan Resources
         VkInstance instance;
         VkDebugUtilsMessengerEXT debugMessenger;
 
+        // Vulkan Components
         VkPhysicalDevice physicalDevice;
-        QueueFamilyIndices queueIndices;
         VkDevice device;
         std::array<VkQueue, QueueFamilyIndices::COUNT> queues;
         VkSurfaceKHR surface;
+
+        // Customized Infos
+        QueueFamilyIndices queueIndices;
+        SwapChainSupportDetails swapChainSupport;
+        
+        /// -----------------
 
         // GLFW Handle
         GLFWwindow* window;

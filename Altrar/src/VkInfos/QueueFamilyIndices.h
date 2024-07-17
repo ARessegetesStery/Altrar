@@ -32,8 +32,8 @@ namespace ATR
         friend std::ostream& operator<< (std::ostream& os, QueueFamilyIndices const& indices)
         {
             return os << 
-                Format::smallIndent << "Graphics Queue Index: " << indices.indices[GRAPHICS].value() << "\n" <<
-                Format::smallIndent << "Present Queue Index: " << indices.indices[PRESENT].value();
+                Format::item << "Graphics Queue Index: " << indices.indices[GRAPHICS].value() << "\n" <<
+                Format::item << "Present Queue Index: " << indices.indices[PRESENT].value();
         }
     };
 }

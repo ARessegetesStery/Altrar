@@ -16,10 +16,11 @@ namespace ATR
         void AbsorbConfigs(const Config& config);
 
         // Initializing Vulkan
-        void Init();
+        void Init(GLFWwindow* window);
 
         void CreateInstance();
         void SetupDebugMessenger();
+        void CreateSurface();
         void SelectPhysicalDevice();
         void CreateLogicalDevice();
 
@@ -65,7 +66,11 @@ namespace ATR
         VkPhysicalDevice physicalDevice;
         QueueFamilyIndices queueIndices;
         VkDevice device;
-        VkQueue queue;
+        std::array<VkQueue, QueueFamilyIndices::COUNT> queues;
+        VkSurfaceKHR surface;
+
+        // GLFW Handle
+        GLFWwindow* window;
 
         // Default Vulkan Configs
         static inline VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerCreateInfo = {

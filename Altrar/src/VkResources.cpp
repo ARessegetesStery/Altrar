@@ -11,10 +11,13 @@ namespace ATR
             this->validationLayers.push_back(layerName.c_str());
     }
 
-    void VkResourceManager::Init()
+    void VkResourceManager::Init(GLFWwindow* window)
     {
+        this->window = window;
+
         this->CreateInstance();
         this->SetupDebugMessenger();
+        this->CreateSurface();
         this->SelectPhysicalDevice();
         this->CreateLogicalDevice();
     }
@@ -78,6 +81,13 @@ namespace ATR
             throw Exception("Failed to set up debug messenger", ExceptionType::INIT_VULKAN);
     }
 
+    void VkResourceManager::CreateSurface()
+    {
+        ATR_LOG("Creating Window Surface...")
+        if (glfwCreateWindowSurface(this->instance, this->window, nullptr, &this->surface) != VK_SUCCESS)
+            throw Exception("Failed to create window surface", ExceptionType::INIT_VULKAN);
+    }
+
     void VkResourceManager::SelectPhysicalDevice()
     {
         ATR_LOG("Looking for GPUs...")
@@ -115,17 +125,27 @@ namespace ATR
         ATR_LOG("Setting Up Device...")
         VkPhysicalDeviceFeatures deviceFeatures = {};
 
-        VkDeviceQueueCreateInfo queueCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-            .queueFamilyIndex = this->queueIndices.graphicsFamily.value(),
-            .queueCount = 1,
-            .pQueuePriorities = &VkResourceManager::defaultQueuePriority
-        };
+        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+        std::set<UInt> uniqueQueueFamilies;
+        for (size_t index = 0; index != QueueFamilyIndices::COUNT; ++index)
+            uniqueQueueFamilies.insert(this->queueIndices.indices[index].value());
+
+        for (UInt uniqueQueueIndex : uniqueQueueFamilies)
+        {
+            VkDeviceQueueCreateInfo queueCreateInfo = {
+                .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                //.queueFamilyIndex = this->queueIndices.indices[index].value(),
+                .queueFamilyIndex = uniqueQueueIndex,
+                .queueCount = 1,
+                .pQueuePriorities = &VkResourceManager::defaultQueuePriority
+            };
+            queueCreateInfos.push_back(queueCreateInfo);
+        }
 
         VkDeviceCreateInfo deviceCreateInfo = {
             .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-            .queueCreateInfoCount = 1,
-            .pQueueCreateInfos = &queueCreateInfo,
+            .queueCreateInfoCount = static_cast<UInt>(queueCreateInfos.size()),
+            .pQueueCreateInfos = queueCreateInfos.data(),
             .enabledExtensionCount = 0,
             .pEnabledFeatures = &deviceFeatures
         };
@@ -139,10 +159,12 @@ namespace ATR
         else
             deviceCreateInfo.enabledLayerCount = 0;
 
-        if (vkCreateDevice(this->physicalDevice, &deviceCreateInfo, nullptr, &this->device) != VK_SUCCESS)
+        VkResult result = vkCreateDevice(this->physicalDevice, &deviceCreateInfo, nullptr, &this->device);
+        if (result != VK_SUCCESS)
             throw Exception("Failed to create logical device", ExceptionType::INIT_VULKAN);
 
-        vkGetDeviceQueue(this->device, this->queueIndices.graphicsFamily.value(), 0, &this->queue);
+        for (size_t index = 0; index != QueueFamilyIndices::COUNT; ++index)
+            vkGetDeviceQueue(this->device, this->queueIndices.indices[index].value(), 0, &this->queues[index]);
     }
 
     VKAPI_ATTR VkBool32 VKAPI_CALL VkResourceManager::DebugCallback(\
@@ -210,11 +232,11 @@ namespace ATR
 
         if (VkResourceManager::verbose)
         {
-            ATR_LOG_SECTION("Vulkan Available Extensions: (" + std::to_string(extensionCount) + ")")
+            ATR_LOG_SECTION("Vulkan Available Extensions: (" + std::to_string(extensions.size()) + ")")
             for (const auto& extension : extensions)
                 ATR_PRINT(String("- ") + extension.extensionName)
 
-            ATR_LOG_SECTION("Vulkan Required Extensions: (" + std::to_string(requiredExtensionCount) + ")")
+            ATR_LOG_SECTION("Vulkan Required Extensions: (" + std::to_string(requiredExtensions.size()) + ")")
             for (const auto& extension : requiredExtensions)
                 ATR_PRINT(String("- ") + extension)
         }
@@ -278,7 +300,12 @@ namespace ATR
         for (UInt i = 0; i != queueFamilies.size(); ++i)
         {
             if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-                this->queueIndices.graphicsFamily = i;
+                this->queueIndices.indices[QueueFamilyIndices::GRAPHICS] = i;
+
+            VkBool32 presentSupport = false;
+            vkGetPhysicalDeviceSurfaceSupportKHR(device, i, this->surface, &presentSupport);
+            if (presentSupport)
+                this->queueIndices.indices[QueueFamilyIndices::PRESENT] = i;
 
             if (this->queueIndices.Complete())
                 break;

@@ -13,14 +13,16 @@
 
 // STL Containers
 #include <vector>
+#include <array>
+#include <set>
 
 // Misc STL Defs
 #include <limits>
 
 // Vulkan-Related
 #include "vulkan/vulkan.h"
+#define GLFW_INCLUDE_VULKAN
 #include "glfw/glfw3.h"
 
 // ATR Core
 #include "ATRException.h"
-#include "ATRInfo.h"

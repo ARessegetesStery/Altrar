@@ -7,6 +7,9 @@
 // Types
 #include "ATRType.h"
 
+// OS Specifics and Outputs
+#include "ATRInfo.h"
+
 // Global Defines
 #if defined ATR_DEBUG
 

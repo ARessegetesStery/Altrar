@@ -28,7 +28,7 @@ namespace ATR
     void Renderer::InitRenderer()
     {
         ATR_LOG_PART("Initializing Renderer");
-        ATR_LOG(this->config);
+        ATR_LOG("Running with Config: " << this->config);
         this->vkResources.AbsorbConfigs(this->config);
     }
 

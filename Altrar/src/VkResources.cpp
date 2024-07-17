@@ -6,7 +6,7 @@ namespace ATR
 {
     void VkResourceManager::AbsorbConfigs(const Config& config)
     {
-        this->verbose = config.verbose;
+        VkResourceManager::verbose = config.verbose;
         for (const String& layerName : config.validationLayers)
             this->validationLayers.push_back(layerName.c_str());
     }
@@ -16,6 +16,7 @@ namespace ATR
         this->CreateInstance();
         this->SetupDebugMessenger();
         this->SelectPhysicalDevice();
+        this->CreateLogicalDevice();
     }
 
     void VkResourceManager::CleanUp()
@@ -23,11 +24,13 @@ namespace ATR
         if (enabledValidation)
             this->DestroyDebugUtilsMessengerEXT(this->instance, this->debugMessenger, nullptr);
 
+        vkDestroyDevice(this->device, nullptr);
         vkDestroyInstance(this->instance, nullptr);
     }
 
     void VkResourceManager::CreateInstance()
     {
+        ATR_LOG("Creating Vulkan Instance...")
         VkResourceManager::GetRequiredExtensions();
         VkResourceManager::FindValidationLayers();
         
@@ -67,6 +70,7 @@ namespace ATR
 
     void VkResourceManager::SetupDebugMessenger()
     {
+        ATR_LOG("Setting Up Debug Structures...")
         if (!this->enabledValidation)
             return;
 
@@ -76,6 +80,7 @@ namespace ATR
 
     void VkResourceManager::SelectPhysicalDevice()
     {
+        ATR_LOG("Looking for GPUs...")
         this->physicalDevice = VK_NULL_HANDLE;
         UInt physicalDeviceCount = 0;
         vkEnumeratePhysicalDevices(this->instance, &physicalDeviceCount, nullptr);
@@ -96,13 +101,48 @@ namespace ATR
             throw Exception("No Suitable GPU Found.", ExceptionType::INIT_VULKAN);
         }
 
-        if (this->verbose)
+        if (VkResourceManager::verbose)
         {
-            ATR_LOG_SECTION("Selecting Physical Devices")
             VkPhysicalDeviceProperties deviceProperties;
             vkGetPhysicalDeviceProperties(this->physicalDevice, &deviceProperties);
             ATR_PRINT("Using Physical Device: " + String(deviceProperties.deviceName))
+            ATR_PRINT("Queue Family Indices: \n" << this->queueIndices)
         }
+    }
+
+    void VkResourceManager::CreateLogicalDevice()
+    {
+        ATR_LOG("Setting Up Device...")
+        VkPhysicalDeviceFeatures deviceFeatures = {};
+
+        VkDeviceQueueCreateInfo queueCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            .queueFamilyIndex = this->queueIndices.graphicsFamily.value(),
+            .queueCount = 1,
+            .pQueuePriorities = &VkResourceManager::defaultQueuePriority
+        };
+
+        VkDeviceCreateInfo deviceCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+            .queueCreateInfoCount = 1,
+            .pQueueCreateInfos = &queueCreateInfo,
+            .enabledExtensionCount = 0,
+            .pEnabledFeatures = &deviceFeatures
+        };
+
+        // NOTE from Vulkan 1.3.290 this is not necessary as device will automatically have the same validation layers as the instance
+        if (this->enabledValidation)
+        {
+            deviceCreateInfo.enabledLayerCount = static_cast<UInt>(this->validationLayers.size());
+            deviceCreateInfo.ppEnabledLayerNames = this->validationLayers.data();
+        }
+        else
+            deviceCreateInfo.enabledLayerCount = 0;
+
+        if (vkCreateDevice(this->physicalDevice, &deviceCreateInfo, nullptr, &this->device) != VK_SUCCESS)
+            throw Exception("Failed to create logical device", ExceptionType::INIT_VULKAN);
+
+        vkGetDeviceQueue(this->device, this->queueIndices.graphicsFamily.value(), 0, &this->queue);
     }
 
     VKAPI_ATTR VkBool32 VKAPI_CALL VkResourceManager::DebugCallback(\
@@ -114,7 +154,7 @@ namespace ATR
     {
         if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
             ATR_ERROR(String("[Validation Layer] ") + pCallbackData->pMessage)
-        else
+        else if (VkResourceManager::verbose)
             ATR_PRINT(String("[Validation Layer] ") + pCallbackData->pMessage)
 
         return VK_FALSE;
@@ -168,7 +208,7 @@ namespace ATR
         if (enabledValidation)
             requiredExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
-        if (this->verbose)
+        if (VkResourceManager::verbose)
         {
             ATR_LOG_SECTION("Vulkan Available Extensions: (" + std::to_string(extensionCount) + ")")
             for (const auto& extension : extensions)
@@ -198,7 +238,7 @@ namespace ATR
             std::vector<VkLayerProperties> availableValidatedLayers(validatedLayerCount);
             vkEnumerateInstanceLayerProperties(&validatedLayerCount, availableValidatedLayers.data());
 
-            if (this->verbose)
+            if (VkResourceManager::verbose)
             {
                 ATR_LOG_SECTION("Vulkan Available Layers: (" + std::to_string(validatedLayerCount) + ")")
                 for (const auto& layer : availableValidatedLayers)
@@ -220,17 +260,15 @@ namespace ATR
 
     Bool VkResourceManager::DeviceSuitable(VkPhysicalDevice device)
     {
-        QueueFamilyIndices indices = FindQueueFamilies(device);
+        FindQueueFamilies(device);
 
-        if (indices.Complete())
+        if (this->queueIndices.Complete())
             return true;
         return false;
     }
 
-    QueueFamilyIndices VkResourceManager::FindQueueFamilies(VkPhysicalDevice device)
+    void VkResourceManager::FindQueueFamilies(VkPhysicalDevice device)
     {
-        QueueFamilyIndices indices;
-        
         UInt queueFamilyCount = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
@@ -240,12 +278,10 @@ namespace ATR
         for (UInt i = 0; i != queueFamilies.size(); ++i)
         {
             if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-                indices.graphicsFamily = i;
+                this->queueIndices.graphicsFamily = i;
 
-            if (indices.Complete())
+            if (this->queueIndices.Complete())
                 break;
         }
-
-        return indices;
     }
 }

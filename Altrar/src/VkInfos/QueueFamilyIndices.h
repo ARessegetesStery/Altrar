@@ -13,5 +13,11 @@ namespace ATR
         {
             return graphicsFamily.has_value();
         }
+
+        friend std::ostream& operator<< (std::ostream& os, QueueFamilyIndices const& indices)
+        {
+            return os << 
+                Format::smallIndent << "Graphics Family: " << indices.graphicsFamily.value();
+        }
     };
 }

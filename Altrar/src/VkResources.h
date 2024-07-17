@@ -21,12 +21,13 @@ namespace ATR
         void CreateInstance();
         void SetupDebugMessenger();
         void SelectPhysicalDevice();
+        void CreateLogicalDevice();
 
         void GetRequiredExtensions();
         void FindValidationLayers();                            // Validation Layers are specified by the user, not infrastructure
 
         Bool DeviceSuitable(VkPhysicalDevice device);
-        QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device);
+        void FindQueueFamilies(VkPhysicalDevice device);
 
         // Cleaning up
         void CleanUp();
@@ -52,7 +53,7 @@ namespace ATR
 
     private:
         // Configs
-        Bool verbose;
+        inline static Bool verbose = false;
         Bool enabledValidation;
         std::vector<const char*> requiredExtensions;
         std::vector<const char*> validationLayers;
@@ -62,6 +63,9 @@ namespace ATR
         VkDebugUtilsMessengerEXT debugMessenger;
 
         VkPhysicalDevice physicalDevice;
+        QueueFamilyIndices queueIndices;
+        VkDevice device;
+        VkQueue queue;
 
         // Default Vulkan Configs
         static inline VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerCreateInfo = {
@@ -75,6 +79,7 @@ namespace ATR
             .pfnUserCallback = VkResourceManager::DebugCallback,
             .pUserData = nullptr
         };
+        static inline Float defaultQueuePriority = 0.2f;
     };
 
 }

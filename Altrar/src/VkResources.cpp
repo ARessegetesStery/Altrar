@@ -9,17 +9,25 @@ namespace ATR
         VkResourceManager::verbose = config.verbose;
         for (const String& layerName : config.validationLayers)
             this->validationLayers.push_back(layerName.c_str());
+
+        this->width = config.width;
+        this->height = config.height;
     }
 
-    void VkResourceManager::Init(GLFWwindow* window)
+    void VkResourceManager::Init()
     {
-        this->window = window;
-
+        this->CreateWindow();
         this->CreateInstance();
         this->SetupDebugMessenger();
         this->CreateSurface();
         this->SelectPhysicalDevice();
         this->CreateLogicalDevice();
+    }
+
+    void VkResourceManager::Update()
+    {
+        while (!glfwWindowShouldClose(this->window))
+            glfwPollEvents();
     }
 
     void VkResourceManager::CleanUp()
@@ -28,7 +36,23 @@ namespace ATR
             this->DestroyDebugUtilsMessengerEXT(this->instance, this->debugMessenger, nullptr);
 
         vkDestroyDevice(this->device, nullptr);
+        vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
+
         vkDestroyInstance(this->instance, nullptr);
+
+        glfwDestroyWindow(this->window);
+        glfwTerminate();
+    }
+
+    void VkResourceManager::CreateWindow()
+    {
+        ATR_LOG_PART("Initializing Window");
+        glfwInit();
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+        this->window = glfwCreateWindow(this->width, this->height, "Altrar", nullptr, nullptr);
+        if (!window)
+            throw Exception("Failed to create window", ExceptionType::INIT_GLFW);
     }
 
     void VkResourceManager::CreateInstance()

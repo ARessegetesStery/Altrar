@@ -15,9 +15,13 @@ namespace ATR
         // Configs
         void AbsorbConfigs(const Config& config);
 
-        // Initializing Vulkan
-        void Init(GLFWwindow* window);
+        // Major Components
+        void Init();
+        void Update();
+        void CleanUp();
 
+        // Initializing Vulkan
+        void CreateWindow();
         void CreateInstance();
         void SetupDebugMessenger();
         void CreateSurface();
@@ -29,9 +33,6 @@ namespace ATR
 
         Bool DeviceSuitable(VkPhysicalDevice device);
         void FindQueueFamilies(VkPhysicalDevice device);
-
-        // Cleaning up
-        void CleanUp();
 
         /// Helpers
         // Init
@@ -55,6 +56,7 @@ namespace ATR
     private:
         // Configs
         inline static Bool verbose = false;
+        UInt width, height;
         Bool enabledValidation;
         std::vector<const char*> requiredExtensions;
         std::vector<const char*> validationLayers;

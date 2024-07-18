@@ -23,6 +23,7 @@ namespace ATR
         this->SelectPhysicalDevice();
         this->CreateLogicalDevice();
         this->CreateSwapchain();
+        this->CreateImageViews();
     }
 
     void VkResourceManager::Update()
@@ -37,6 +38,8 @@ namespace ATR
             this->DestroyDebugUtilsMessengerEXT(this->instance, this->debugMessenger, nullptr);
 
         vkDestroySwapchainKHR(this->device, this->swapchain, nullptr);
+        for (const auto& view : swapchainImageViews)
+            vkDestroyImageView(this->device, view, nullptr);
         vkDestroyDevice(this->device, nullptr);
 
         vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
@@ -234,6 +237,39 @@ namespace ATR
             throw Exception("Failed to create swapchain", ExceptionType::INIT_VULKAN);
 
         this->RetrieveSwapChainImages();
+    }
+
+    void VkResourceManager::CreateImageViews()
+    {
+        ATR_LOG("Retrieving image views from swapchain...")
+        swapchainImageViews.resize(swapchainImages.size());
+        for (size_t i = 0; i != swapchainImages.size(); ++i)
+        {
+            VkImageViewCreateInfo createInfo = {
+                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                .image = swapchainImages[i],
+                .viewType = VK_IMAGE_VIEW_TYPE_2D,
+                .format = swapChainConfig.format.format,
+
+                .components = {
+                    .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+                    .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+                    .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+                    .a = VK_COMPONENT_SWIZZLE_IDENTITY
+                },
+
+                .subresourceRange = {
+                    .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .baseMipLevel = 0,
+                    .levelCount = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount = 1
+                }
+            };
+
+            if (vkCreateImageView(this->device, &createInfo, nullptr, &this->swapchainImageViews[i]) != VK_SUCCESS)
+                throw Exception("Failed to create swapchain image views", ExceptionType::INIT_VULKAN);
+        }
     }
 
     VKAPI_ATTR VkBool32 VKAPI_CALL VkResourceManager::DebugCallback(\

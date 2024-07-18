@@ -28,6 +28,7 @@ namespace ATR
         void SelectPhysicalDevice();
         void CreateLogicalDevice();
         void CreateSwapchain();
+        void CreateImageViews();
 
         /// Helpers
         // Init
@@ -82,6 +83,7 @@ namespace ATR
         VkSwapchainKHR swapchain;
         std::array<VkQueue, QueueFamilyIndices::COUNT> queues;
         std::vector<VkImage> swapchainImages;
+        std::vector<VkImageView> swapchainImageViews;
 
         // Customized Infos
         QueueFamilyIndices queueIndices;

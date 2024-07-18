@@ -24,6 +24,7 @@ namespace ATR
         this->CreateLogicalDevice();
         this->CreateSwapchain();
         this->CreateImageViews();
+        this->CreateGraphicsPipeline();
     }
 
     void VkResourceManager::Update()
@@ -270,6 +271,11 @@ namespace ATR
             if (vkCreateImageView(this->device, &createInfo, nullptr, &this->swapchainImageViews[i]) != VK_SUCCESS)
                 throw Exception("Failed to create swapchain image views", ExceptionType::INIT_VULKAN);
         }
+    }
+
+    void VkResourceManager::CreateGraphicsPipeline()
+    {
+
     }
 
     VKAPI_ATTR VkBool32 VKAPI_CALL VkResourceManager::DebugCallback(\

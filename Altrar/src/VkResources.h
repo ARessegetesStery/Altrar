@@ -29,6 +29,7 @@ namespace ATR
         void CreateLogicalDevice();
         void CreateSwapchain();
         void CreateImageViews();
+        void CreateGraphicsPipeline();
 
         /// Helpers
         // Init

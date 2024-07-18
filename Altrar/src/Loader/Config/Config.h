@@ -21,8 +21,7 @@ namespace ATR
             layerStr = layerStr.substr(0, layerStr.size() - 4);
 
             return os <<
-                Format::item << "Width: " << config.width << ", " <<
-                Format::item << "Height: " << config.height << "\n" <<
+                Format::item << "Width: " << config.width << ", " << "Height: " << config.height << "\n" <<
                 std::boolalpha <<   // print bools as true/false
                 Format::item << "Verbose: " << config.verbose << "\n" <<
                 Format::item << "Enable Validation: " << config.enableValidation << "\n" <<

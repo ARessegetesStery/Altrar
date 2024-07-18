@@ -29,6 +29,15 @@ namespace ATR
             return true;
         }
 
+        inline std::array<UInt, QueueFamilyIndices::COUNT> AllIndices() 
+        {
+            std::array<UInt, QueueFamilyIndices::COUNT> compactArray;
+            for (size_t i = 0; i < QueueFamilyIndices::COUNT; i++)
+                compactArray[i] = indices[i].value();
+
+            return compactArray;
+        }
+
         friend std::ostream& operator<< (std::ostream& os, QueueFamilyIndices const& indices)
         {
             return os << 

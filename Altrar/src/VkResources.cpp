@@ -22,6 +22,7 @@ namespace ATR
         this->CreateSurface();
         this->SelectPhysicalDevice();
         this->CreateLogicalDevice();
+        this->CreateSwapchain();
     }
 
     void VkResourceManager::Update()
@@ -35,9 +36,10 @@ namespace ATR
         if (enabledValidation)
             this->DestroyDebugUtilsMessengerEXT(this->instance, this->debugMessenger, nullptr);
 
+        vkDestroySwapchainKHR(this->device, this->swapchain, nullptr);
         vkDestroyDevice(this->device, nullptr);
-        vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
 
+        vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
         vkDestroyInstance(this->instance, nullptr);
 
         glfwDestroyWindow(this->window);
@@ -170,7 +172,8 @@ namespace ATR
             .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
             .queueCreateInfoCount = static_cast<UInt>(queueCreateInfos.size()),
             .pQueueCreateInfos = queueCreateInfos.data(),
-            .enabledExtensionCount = 0,
+            .enabledExtensionCount = (UInt)(this->deviceExtensions.size()),
+            .ppEnabledExtensionNames = this->deviceExtensions.data(),
             .pEnabledFeatures = &deviceFeatures
         };
 
@@ -189,6 +192,48 @@ namespace ATR
 
         for (size_t index = 0; index != QueueFamilyIndices::COUNT; ++index)
             vkGetDeviceQueue(this->device, this->queueIndices.indices[index].value(), 0, &this->queues[index]);
+    }
+
+    void VkResourceManager::CreateSwapchain()
+    {
+        ATR_LOG("Creating Swapchain...")
+        this->QuerySwapChainSupport(this->physicalDevice);
+        this->ConfigureSwapChain(this->swapChainSupport);
+
+        UInt imageCount = this->swapChainSupport.capabilities.minImageCount + 1;
+        UInt maxSuportedImages = this->swapChainSupport.capabilities.maxImageCount;
+        if (maxSuportedImages != 0 && imageCount > maxSuportedImages)
+            imageCount = maxSuportedImages;
+
+        VkSwapchainCreateInfoKHR createInfo = {
+            .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+            .surface = this->surface,
+            .minImageCount = imageCount,
+            .imageFormat = this->swapChainConfig.format.format,
+            .imageColorSpace = this->swapChainConfig.format.colorSpace,
+            .imageExtent = this->swapChainConfig.extent,
+            .imageArrayLayers = 1,
+            .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            .preTransform = this->swapChainSupport.capabilities.currentTransform,
+            .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+            .presentMode = this->swapChainConfig.presentMode,
+            .clipped = VK_TRUE,
+            .oldSwapchain = VK_NULL_HANDLE
+        };
+
+        if (this->queueIndices.indices[QueueFamilyIndices::GRAPHICS] != this->queueIndices.indices[QueueFamilyIndices::PRESENT])
+        {
+            createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+            createInfo.queueFamilyIndexCount = 2;
+            createInfo.pQueueFamilyIndices = this->queueIndices.AllIndices().data();
+        }
+        else
+            createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        if (vkCreateSwapchainKHR(this->device, &createInfo, nullptr, &this->swapchain) != VK_SUCCESS)
+            throw Exception("Failed to create swapchain", ExceptionType::INIT_VULKAN);
+
+        this->RetrieveSwapChainImages();
     }
 
     VKAPI_ATTR VkBool32 VKAPI_CALL VkResourceManager::DebugCallback(\
@@ -386,5 +431,71 @@ namespace ATR
             this->swapChainSupport.presentModes.resize(presentModeCount);
             vkGetPhysicalDeviceSurfacePresentModesKHR(device, this->surface, &presentModeCount, this->swapChainSupport.presentModes.data());
         }
+    }
+
+    void VkResourceManager::ConfigureSwapChain(SwapChainSupportDetails support)
+    {
+        // Choose Swap Surface Format
+        Bool found = false;
+        for (const auto& format : support.formats)
+        {
+            if (format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+            {
+                this->swapChainConfig.format = format;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+            this->swapChainConfig.format = support.formats[0];
+
+        // Choose Swapchain Presentation Mode
+        found = false;
+        for (const auto& mode : support.presentModes)
+        {
+            if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
+            {
+                this->swapChainConfig.presentMode = mode;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+            this->swapChainConfig.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+
+        // Choose Swap Extent
+        if (support.capabilities.currentExtent.width != std::numeric_limits<UInt>::max())
+            this->swapChainConfig.extent = support.capabilities.currentExtent;
+        else
+        {
+            Int width, height;
+            glfwGetFramebufferSize(this->window, &width, &height);
+
+            VkExtent2D actualExtent = {
+                .width = static_cast<UInt>(width),
+                .height = static_cast<UInt>(height)
+            };
+
+            actualExtent.width = std::max(support.capabilities.minImageExtent.width,
+                std::min(support.capabilities.maxImageExtent.width, actualExtent.width));
+            actualExtent.height = std::max(support.capabilities.minImageExtent.height,
+                std::min(support.capabilities.maxImageExtent.height, actualExtent.height));
+
+            this->swapChainConfig.extent = actualExtent;
+        }
+    }
+
+    void VkResourceManager::RetrieveSwapChainImages()
+    {
+        UInt imageCount = 0;
+        vkGetSwapchainImagesKHR(this->device, this->swapchain, &imageCount, nullptr);
+
+        this->swapchainImages.resize(imageCount);
+        vkGetSwapchainImagesKHR(this->device, this->swapchain, &imageCount, this->swapchainImages.data());
+
+        if (this->verbose)
+            ATR_PRINT("Retrieved " + std::to_string(imageCount) + " images in total in the swapchain.")
     }
 }

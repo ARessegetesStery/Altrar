@@ -3,8 +3,6 @@
 
 #include <vector>
 
-#include "vulkan/vulkan.h"
-
 namespace ATR
 {
     struct SwapChainSupportDetails

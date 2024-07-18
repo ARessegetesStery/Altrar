@@ -3,8 +3,7 @@
 
 #include "Loader/Config/Config.h"
 
-#include "VkInfos/QueueFamilyIndices.h"
-#include "VkInfos/SwapChainSupport.h"
+#include "VkInfos/VkInfos.h"
 
 namespace ATR
 {
@@ -28,6 +27,7 @@ namespace ATR
         void CreateSurface();
         void SelectPhysicalDevice();
         void CreateLogicalDevice();
+        void CreateSwapchain();
 
         /// Helpers
         // Init
@@ -55,6 +55,8 @@ namespace ATR
         void FindQueueFamilies(VkPhysicalDevice device);
         Bool CheckDeviceExtensionSupport(VkPhysicalDevice device);
         void QuerySwapChainSupport(VkPhysicalDevice device);
+        void ConfigureSwapChain(SwapChainSupportDetails support);
+        void RetrieveSwapChainImages();
 
     private:
         // Configs
@@ -76,12 +78,15 @@ namespace ATR
         // Vulkan Components
         VkPhysicalDevice physicalDevice;
         VkDevice device;
-        std::array<VkQueue, QueueFamilyIndices::COUNT> queues;
         VkSurfaceKHR surface;
+        VkSwapchainKHR swapchain;
+        std::array<VkQueue, QueueFamilyIndices::COUNT> queues;
+        std::vector<VkImage> swapchainImages;
 
         // Customized Infos
         QueueFamilyIndices queueIndices;
         SwapChainSupportDetails swapChainSupport;
+        SwapChainConfig swapChainConfig;
         
         /// -----------------
 

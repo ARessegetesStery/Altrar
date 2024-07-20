@@ -1,0 +1,28 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: abel0b/setup-premake@v2.4
+      with:
+        version: "5.0.0-beta2"
+    - name: Install Vulkan SDK
+      uses: jakoch/install-vulkan-sdk-action@v1.0.0
+      with:
+        optional_components: com.lunarg.vulkan.vma
+        install_runtime: true
+        cache: true
+        stripdown: true
+    - name: Generate makefile with premake
+      run: premake gmake2
+    - name: Build with makefile
+      run: make

@@ -14,6 +14,9 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1.1
     
     - name: Install premake
       uses: abel0b/setup-premake@v2.4
@@ -21,7 +24,7 @@ jobs:
         version: "5.0.0-beta2"
         
     - name: Generate makefile with premake
-      run: premake5 gmake2
+      run: premake5 vs2022
       
-    - name: Build with makefile
-      run: make
+    - name: Build solution with Debug
+      run: msbuild Altrar.sln /property:Configuration=Debug

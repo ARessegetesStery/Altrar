@@ -14,13 +14,19 @@ namespace ATR
 
 #if not defined ATR_OUTPUT_SILENT
 
+#define ATR_FILL_LEFT 20
+#define ATR_FILL_LENGTH 80
+
+#define ATR_FILL_STR_WITH(fill, leftsize, size, content)\
+	std::left << std::setfill(fill) << std::setw(leftsize) << "" << std::left << std::setfill(fill) << std::setw(size) << content
+
 #define ATR_PRINT(x) {std::cout << x << std::endl;}
 
 #define ATR_LOG(x) {std::cout << ">> " << x << std::endl;}
-#define ATR_LOG_PART(name) {std::cout << "======================" << \
-	std::left << std::setfill('=') << std::setw(60) << name << std::endl;}
-#define ATR_LOG_SECTION(name) {std::cout << "----------------------" << \
-	std::left << std::setfill('-') << std::setw(60) << name << std::endl;}
+#define ATR_LOG_PART(name) {std::cout << ATR_FILL_STR_WITH('=', ATR_FILL_LEFT, ATR_FILL_LENGTH, name) << std::endl;}
+#define ATR_LOG_SECTION(name) {std::cout << ATR_FILL_STR_WITH('-', ATR_FILL_LEFT, ATR_FILL_LENGTH, name) << std::endl;} 
+#define ATR_LOG_ACTION(name) {std::cout << ATR_FILL_STR_WITH('#', ATR_FILL_LEFT, ATR_FILL_LENGTH, name) << std::endl;}
+#define ATR_LOG_ACTION_END {std::cout << ATR_FILL_STR_WITH('#', ATR_FILL_LEFT, ATR_FILL_LENGTH, "") << std::endl;}
 
 #define ATR_ERROR(x) { \
 	OS_ChangeConsoleColor(12); \

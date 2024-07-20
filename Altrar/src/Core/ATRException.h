@@ -7,7 +7,8 @@ namespace ATR
     enum class ExceptionType
     {
         INIT_RENDERER,
-        INIT_GLFW, INIT_VULKAN
+        INIT_GLFW, INIT_VULKAN,
+        SHADER_COMPILE
     };
 
     class Exception
@@ -22,11 +23,17 @@ namespace ATR
             String typeStr = "";
             switch (this->type)
             {
+            case ExceptionType::INIT_RENDERER:
+                typeStr += "[INIT] (Renderer)";
+                break;
             case ExceptionType::INIT_GLFW:
                 typeStr += "[INIT] (GLFW)";
                 break;
             case ExceptionType::INIT_VULKAN:
-                typeStr += "[INIT] (VULKAN)";
+                typeStr += "[INIT] (Vulkan)";
+                break;
+            case ExceptionType::SHADER_COMPILE:
+                typeStr += "[SHADER] (Compile)";
                 break;
             }
 

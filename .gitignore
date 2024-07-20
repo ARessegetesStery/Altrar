@@ -33,9 +33,9 @@
 *.app
 
 # Intermediate files
-/.vs
-/bin
-/bin-int
+/.vs/
+/bin/
+/bin-int/
 
 # Generated Viasual Studio Project Files
 *.sln
@@ -44,4 +44,4 @@
 *.vcxproj.filters
 
 # Vendor Executables
-!vendor/bin/*.exe
+!vendor/bin/**/*.exe

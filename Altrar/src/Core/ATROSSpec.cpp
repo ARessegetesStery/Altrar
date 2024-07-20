@@ -2,10 +2,12 @@
 
 #include "ATROSSpec.h"
 
+#include <algorithm>
+
 namespace ATR
 {
 
-#ifdef _WIN32
+#if defined _WIN32
 #include <windows.h>
 
 	void OS_ChangeConsoleColor(unsigned int color)
@@ -15,5 +17,16 @@ namespace ATR
     }
 
 #endif
+
+    void OS::Execute(String cmd)
+    {
+#if defined _WIN32
+        // Since Windows requires "\" for file systems, and it needs to be escaped, first insert \\ for every "\"
+        ATR_LOG_ACTION(("Executing Command: " + cmd))
+        std::replace(cmd.begin(), cmd.end(), '/', '\\');
+        system(cmd.c_str());
+        ATR_LOG_ACTION_END
+#endif
+    }
 
 }

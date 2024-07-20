@@ -15,14 +15,6 @@ jobs:
     - uses: abel0b/setup-premake@v2.4
       with:
         version: "5.0.0-beta2"
-    - name: Install Vulkan SDK
-      uses: jakoch/install-vulkan-sdk-action@v1.0.0
-      with:
-        vulkan_version: 1.3.283.0
-        optional_components: com.lunarg.vulkan.vma
-        install_runtime: true
-        cache: true
-        stripdown: true
     - name: Generate makefile with premake
       run: premake gmake2
     - name: Build with makefile

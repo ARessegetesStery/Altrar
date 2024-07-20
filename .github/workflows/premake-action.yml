@@ -12,10 +12,16 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: abel0b/setup-premake@v2.4
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Install premake
+      uses: abel0b/setup-premake@v2.4
       with:
         version: "5.0.0-beta2"
+        
     - name: Generate makefile with premake
       run: premake5 gmake2
+      
     - name: Build with makefile
       run: make

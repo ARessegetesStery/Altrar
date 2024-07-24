@@ -36,6 +36,7 @@
 /.vs/
 /bin/
 /bin-int/
+/Altrar/bin
 
 # Generated Viasual Studio Project Files
 *.sln

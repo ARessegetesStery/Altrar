@@ -60,6 +60,8 @@ namespace ATR
         void ConfigureSwapChain(SwapChainSupportDetails support);
         void RetrieveSwapChainImages();
 
+        std::vector<char> ReadShaderCode(const char* path);
+
     private:
         // Configs
         inline static Bool verbose = false;
@@ -90,6 +92,10 @@ namespace ATR
         QueueFamilyIndices queueIndices;
         SwapChainSupportDetails swapChainSupport;
         SwapChainConfig swapChainConfig;
+
+        // Shader Codes
+        std::vector<char> vertShaderCode;
+        std::vector<char> fragShaderCode;
         
         /// -----------------
 

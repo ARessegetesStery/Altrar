@@ -275,7 +275,13 @@ namespace ATR
 
     void VkResourceManager::CreateGraphicsPipeline()
     {
+        ATR_LOG("Creating Graphics Pipeline...")
 
+        // Compile Shaders
+        ATR::OS::Execute("scripts/platform/windows/compile-shader.bat");
+
+        this->vertShaderCode = ReadShaderCode("bin/shaders/vert.spv");
+        this->fragShaderCode = ReadShaderCode("bin/shaders/frag.spv");
     }
 
     VKAPI_ATTR VkBool32 VKAPI_CALL VkResourceManager::DebugCallback(\
@@ -539,5 +545,20 @@ namespace ATR
 
         if (this->verbose)
             ATR_PRINT("Retrieved " + std::to_string(imageCount) + " images in total in the swapchain.")
+    }
+
+    std::vector<char> VkResourceManager::ReadShaderCode(const char* path)
+    {
+        std::ifstream file(path, std::ios::ate | std::ios::binary);
+        if (!file.is_open())
+            throw Exception("Failed to open file: " + String(path), ExceptionType::SHADER_COMPILE);
+
+        size_t fileSize = (size_t)file.tellg();
+        std::vector<char> buffer(fileSize);
+        file.seekg(0);
+        file.read(buffer.data(), fileSize);
+        file.close();
+
+        return buffer;
     }
 }

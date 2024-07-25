@@ -29,6 +29,7 @@ namespace ATR
         void CreateLogicalDevice();
         void CreateSwapchain();
         void CreateImageViews();
+        void CreateRenderPass();
         void CreateGraphicsPipeline();
 
         /// Helpers
@@ -88,6 +89,7 @@ namespace ATR
         std::array<VkQueue, QueueFamilyIndices::COUNT> queues;
         std::vector<VkImage> swapchainImages;
         std::vector<VkImageView> swapchainImageViews;
+        VkRenderPass renderPass;
         VkPipelineLayout pipelineLayout;                                // Specify Uniforms
 
         // Customized Infos

@@ -24,6 +24,7 @@ namespace ATR
         this->CreateLogicalDevice();
         this->CreateSwapchain();
         this->CreateImageViews();
+        this->CreateRenderPass();
         this->CreateGraphicsPipeline();
     }
 
@@ -38,6 +39,8 @@ namespace ATR
         if (enabledValidation)
             this->DestroyDebugUtilsMessengerEXT(this->instance, this->debugMessenger, nullptr);
 
+        vkDestroyRenderPass(this->device, this->renderPass, nullptr);
+        vkDestroyPipelineLayout(this->device, this->pipelineLayout, nullptr);
         vkDestroySwapchainKHR(this->device, this->swapchain, nullptr);
         for (const auto& view : swapchainImageViews)
             vkDestroyImageView(this->device, view, nullptr);
@@ -271,6 +274,44 @@ namespace ATR
             if (vkCreateImageView(this->device, &createInfo, nullptr, &this->swapchainImageViews[i]) != VK_SUCCESS)
                 throw Exception("Failed to create swapchain image views", ExceptionType::INIT_VULKAN);
         }
+    }
+
+    void VkResourceManager::CreateRenderPass()
+    {
+        ATR_LOG("Creating Render Pass...")
+
+        VkAttachmentDescription colorAttachment = {
+            .format = this->swapChainConfig.format.format,
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+        };
+
+        VkAttachmentReference colorAttachmentRef = {
+            .attachment = 0,
+            .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+        };
+
+        VkSubpassDescription subpass = {
+            .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+            .colorAttachmentCount = 1,
+            .pColorAttachments = &colorAttachmentRef
+        };
+
+        VkRenderPassCreateInfo renderPass = {
+            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+            .attachmentCount = 1,
+            .pAttachments = &colorAttachment,
+            .subpassCount = 1,
+            .pSubpasses = &subpass
+        };
+
+        if (vkCreateRenderPass(this->device, &renderPass, nullptr, &this->renderPass) != VK_SUCCESS)
+            throw Exception("Failed to create render pass", ExceptionType::INIT_PIPELINE);
     }
 
     void VkResourceManager::CreateGraphicsPipeline()

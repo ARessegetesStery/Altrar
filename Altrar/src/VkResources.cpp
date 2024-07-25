@@ -16,16 +16,23 @@ namespace ATR
 
     void VkResourceManager::Init()
     {
+        // Setup GLFW Window
         this->CreateWindow();
+
+        // Setup Vulkan
         this->CreateInstance();
         this->SetupDebugMessenger();
         this->CreateSurface();
         this->SelectPhysicalDevice();
         this->CreateLogicalDevice();
+
+        // Setup Graphics Pipeline
         this->CreateSwapchain();
         this->CreateImageViews();
         this->CreateRenderPass();
         this->CreateGraphicsPipeline();
+        this->CreateCommandPool();
+        this->CreateCommandBuffer();
     }
 
     void VkResourceManager::Update()
@@ -39,12 +46,15 @@ namespace ATR
         if (enabledValidation)
             this->DestroyDebugUtilsMessengerEXT(this->instance, this->debugMessenger, nullptr);
 
+        vkDestroyCommandPool(this->device, this->graphicsCommandPool, nullptr);
         vkDestroyPipeline(this->device, this->graphicsPipeline, nullptr);
         vkDestroyRenderPass(this->device, this->renderPass, nullptr);
         vkDestroyPipelineLayout(this->device, this->pipelineLayout, nullptr);
         vkDestroySwapchainKHR(this->device, this->swapchain, nullptr);
         for (const auto& view : swapchainImageViews)
             vkDestroyImageView(this->device, view, nullptr);
+        for (const auto& framebuffer : swapchainFrameBuffers)
+            vkDestroyFramebuffer(this->device, framebuffer, nullptr);
         vkDestroyDevice(this->device, nullptr);
 
         vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
@@ -102,7 +112,7 @@ namespace ATR
             createInfo.enabledLayerCount = 0;
 
         if (vkCreateInstance(&createInfo, nullptr, &this->instance) != VK_SUCCESS)
-            throw Exception("Failed to create instance", ExceptionType::INIT_VULKAN);
+            throw Exception("Failed to create instance", ExceptionType::INIT_VULKAN_SETUP);
     }
 
     void VkResourceManager::SetupDebugMessenger()
@@ -112,14 +122,14 @@ namespace ATR
             return;
 
         if (CreateDebugUtilsMessengerEXT(instance, &VkResourceManager::defaultDebugMessengerCreateInfo, nullptr, &debugMessenger) != VK_SUCCESS)
-            throw Exception("Failed to set up debug messenger", ExceptionType::INIT_VULKAN);
+            throw Exception("Failed to set up debug messenger", ExceptionType::INIT_VULKAN_SETUP);
     }
 
     void VkResourceManager::CreateSurface()
     {
         ATR_LOG("Creating Window Surface...")
         if (glfwCreateWindowSurface(this->instance, this->window, nullptr, &this->surface) != VK_SUCCESS)
-            throw Exception("Failed to create window surface", ExceptionType::INIT_VULKAN);
+            throw Exception("Failed to create window surface", ExceptionType::INIT_VULKAN_SETUP);
     }
 
     void VkResourceManager::SelectPhysicalDevice()
@@ -133,7 +143,7 @@ namespace ATR
         vkEnumeratePhysicalDevices(this->instance, &physicalDeviceCount, availablePhysicalDevices.data());
 
         if (availablePhysicalDevices.size() == 0)
-            throw Exception("No available GPU Found.", ExceptionType::INIT_VULKAN);
+            throw Exception("No available GPU Found.", ExceptionType::INIT_VULKAN_SETUP);
 
         for (auto& device : availablePhysicalDevices)
         {
@@ -142,7 +152,7 @@ namespace ATR
                 this->physicalDevice = device;
                 break;
             }
-            throw Exception("No Suitable GPU Found.", ExceptionType::INIT_VULKAN);
+            throw Exception("No Suitable GPU Found.", ExceptionType::INIT_VULKAN_SETUP);
         }
 
         if (VkResourceManager::verbose)
@@ -196,7 +206,7 @@ namespace ATR
 
         VkResult result = vkCreateDevice(this->physicalDevice, &deviceCreateInfo, nullptr, &this->device);
         if (result != VK_SUCCESS)
-            throw Exception("Failed to create logical device", ExceptionType::INIT_VULKAN);
+            throw Exception("Failed to create logical device", ExceptionType::INIT_VULKAN_SETUP);
 
         for (size_t index = 0; index != QueueFamilyIndices::COUNT; ++index)
             vkGetDeviceQueue(this->device, this->queueIndices.indices[index].value(), 0, &this->queues[index]);
@@ -239,7 +249,7 @@ namespace ATR
             createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
         if (vkCreateSwapchainKHR(this->device, &createInfo, nullptr, &this->swapchain) != VK_SUCCESS)
-            throw Exception("Failed to create swapchain", ExceptionType::INIT_VULKAN);
+            throw Exception("Failed to create swapchain", ExceptionType::INIT_VULKAN_SETUP);
 
         this->RetrieveSwapChainImages();
     }
@@ -273,7 +283,7 @@ namespace ATR
             };
 
             if (vkCreateImageView(this->device, &createInfo, nullptr, &this->swapchainImageViews[i]) != VK_SUCCESS)
-                throw Exception("Failed to create swapchain image views", ExceptionType::INIT_VULKAN);
+                throw Exception("Failed to create swapchain image views", ExceptionType::INIT_VULKAN_SETUP);
         }
     }
 
@@ -512,6 +522,33 @@ namespace ATR
         }
     }
 
+    void VkResourceManager::CreateCommandPool()
+    {
+        ATR_LOG("Creating Command Pool...")
+        VkCommandPoolCreateInfo commandPoolInfo = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+            .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+            .queueFamilyIndex = this->queueIndices.indices[QueueFamilyIndices::GRAPHICS].value()
+        };
+
+        if (vkCreateCommandPool(this->device, &commandPoolInfo, nullptr, &this->graphicsCommandPool) != VK_SUCCESS)
+            throw Exception("Failed to create command pool", ExceptionType::INIT_PIPELINE);
+    }
+
+    void VkResourceManager::CreateCommandBuffer()
+    {
+        ATR_LOG("Creating Command Buffer...")
+        VkCommandBufferAllocateInfo commandBufferInfo = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool = this->graphicsCommandPool,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1
+        };
+
+        if (vkAllocateCommandBuffers(this->device, &commandBufferInfo, &this->graphicsCommandBuffer) != VK_SUCCESS)
+            throw Exception("Failed to allocate command buffer", ExceptionType::INIT_PIPELINE);
+    }
+
     VKAPI_ATTR VkBool32 VKAPI_CALL VkResourceManager::DebugCallback(\
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, 
         VkDebugUtilsMessageTypeFlagsEXT messageType, 
@@ -591,7 +628,7 @@ namespace ATR
             if (std::find_if(extensions.begin(), extensions.end(),
                 [&](const VkExtensionProperties& ext) { return strcmp(ext.extensionName, requiredExtensionNames[i]) == 0; }
             ) == extensions.cend())
-                throw Exception("Required extension not found: " + String(requiredExtensionNames[i]), ExceptionType::INIT_VULKAN);
+                throw Exception("Required extension not found: " + String(requiredExtensionNames[i]), ExceptionType::INIT_VULKAN_SETUP);
     }
 
     void VkResourceManager::FindValidationLayers()
@@ -621,7 +658,7 @@ namespace ATR
                 if (std::find_if(availableValidatedLayers.begin(), availableValidatedLayers.end(),
                     [&](const VkLayerProperties& layer) { return strcmp(layer.layerName, layerName) == 0; }
                 ) == availableValidatedLayers.cend())
-                    throw Exception("Validation layer " + String(layerName) + " not found", ExceptionType::INIT_VULKAN);
+                    throw Exception("Validation layer " + String(layerName) + " not found", ExceptionType::INIT_VULKAN_SETUP);
         }
     }
 

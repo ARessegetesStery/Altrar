@@ -32,6 +32,8 @@ namespace ATR
         void CreateRenderPass();
         void CreateGraphicsPipeline();
         void CreateFrameBuffers();
+        void CreateCommandPool();
+        void CreateCommandBuffer();
 
         /// Helpers
         // Init
@@ -61,6 +63,7 @@ namespace ATR
         void QuerySwapChainSupport(VkPhysicalDevice device);
         void ConfigureSwapChain(SwapChainSupportDetails support);
         void RetrieveSwapChainImages();
+        void RecordCommandBuffer(VkCommandBuffer commandBuffer, UInt imageIndex);
 
         std::vector<char> ReadShaderCode(const char* path);
         VkShaderModule CreateShaderModule(const std::vector<char>& code);
@@ -94,6 +97,8 @@ namespace ATR
         VkRenderPass renderPass;
         VkPipelineLayout pipelineLayout;                                // Specify Uniforms
         VkPipeline graphicsPipeline;
+        VkCommandPool graphicsCommandPool;
+        VkCommandBuffer graphicsCommandBuffer;
 
         // Customized Infos
         QueueFamilyIndices queueIndices;

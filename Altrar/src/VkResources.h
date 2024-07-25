@@ -91,6 +91,7 @@ namespace ATR
         std::vector<VkImageView> swapchainImageViews;
         VkRenderPass renderPass;
         VkPipelineLayout pipelineLayout;                                // Specify Uniforms
+        VkPipeline graphicsPipeline;
 
         // Customized Infos
         QueueFamilyIndices queueIndices;

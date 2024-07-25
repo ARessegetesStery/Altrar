@@ -39,6 +39,7 @@ namespace ATR
         if (enabledValidation)
             this->DestroyDebugUtilsMessengerEXT(this->instance, this->debugMessenger, nullptr);
 
+        vkDestroyPipeline(this->device, this->graphicsPipeline, nullptr);
         vkDestroyRenderPass(this->device, this->renderPass, nullptr);
         vkDestroyPipelineLayout(this->device, this->pipelineLayout, nullptr);
         vkDestroySwapchainKHR(this->device, this->swapchain, nullptr);
@@ -367,7 +368,7 @@ namespace ATR
         };
 
         // Input Assembly
-        VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
+        VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
             .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
             .primitiveRestartEnable = VK_FALSE
@@ -390,7 +391,7 @@ namespace ATR
         };
 
         // TODO see how this coops with dynamic configuration
-        VkPipelineViewportStateCreateInfo viewportState = {
+        VkPipelineViewportStateCreateInfo viewportStateInfo = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
             .viewportCount = 1,
             .pViewports = &viewport,
@@ -400,7 +401,7 @@ namespace ATR
 
         // Rasterizer
         ATR_LOG_SUB("Configuring Rasterizer...")
-        VkPipelineRasterizationStateCreateInfo rasterizer = {
+        VkPipelineRasterizationStateCreateInfo rasterizerInfo = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
             .depthClampEnable = VK_FALSE,
             .rasterizerDiscardEnable = VK_FALSE,
@@ -412,7 +413,7 @@ namespace ATR
         };
 
         // Multisampling
-        VkPipelineMultisampleStateCreateInfo multisampling = {
+        VkPipelineMultisampleStateCreateInfo multisamplingInfo = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
             .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
             .sampleShadingEnable = VK_FALSE,
@@ -436,7 +437,7 @@ namespace ATR
         };
 
         // Color Blending per Pipeline
-        VkPipelineColorBlendStateCreateInfo colorBlending = {
+        VkPipelineColorBlendStateCreateInfo colorBlendingInfo = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
             .logicOpEnable = VK_FALSE,
             .logicOp = VK_LOGIC_OP_COPY,
@@ -456,6 +457,30 @@ namespace ATR
 
         if (vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->pipelineLayout) != VK_SUCCESS)
             throw Exception("Failed to create pipeline layout", ExceptionType::INIT_PIPELINE);
+
+        // Creating the Graphics Pipeline
+        VkGraphicsPipelineCreateInfo createInfo = {
+            .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+            .stageCount = 2,
+            .pStages = shaderStages,
+            .pVertexInputState = &vertexInputInfo,
+            .pInputAssemblyState = &inputAssemblyInfo,
+            .pViewportState = &viewportStateInfo,
+            .pRasterizationState = &rasterizerInfo,
+            .pMultisampleState = &multisamplingInfo,
+            .pColorBlendState = &colorBlendingInfo,
+            .pDynamicState = &dynamicStateCreateInfo,
+            .layout = this->pipelineLayout,
+            .renderPass = this->renderPass, 
+            .subpass = 0,
+            .basePipelineHandle = VK_NULL_HANDLE,
+            .basePipelineIndex = -1
+        };
+
+        if (vkCreateGraphicsPipelines(this->device, VK_NULL_HANDLE, 1, &createInfo, nullptr, &this->graphicsPipeline) != VK_SUCCESS)
+            throw Exception("Failed to create graphics pipeline", ExceptionType::INIT_PIPELINE);
+
+        ATR_LOG("Graphics Pipeline Created Successfully.")
 
         // Cleanup Loaded ShaderCode
         vkDestroyShaderModule(this->device, vertShaderModule, nullptr);

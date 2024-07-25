@@ -31,6 +31,7 @@ namespace ATR
         void CreateImageViews();
         void CreateRenderPass();
         void CreateGraphicsPipeline();
+        void CreateFrameBuffers();
 
         /// Helpers
         // Init
@@ -89,6 +90,7 @@ namespace ATR
         std::array<VkQueue, QueueFamilyIndices::COUNT> queues;
         std::vector<VkImage> swapchainImages;
         std::vector<VkImageView> swapchainImageViews;
+        std::vector<VkFramebuffer> swapchainFrameBuffers;
         VkRenderPass renderPass;
         VkPipelineLayout pipelineLayout;                                // Specify Uniforms
         VkPipeline graphicsPipeline;

@@ -487,6 +487,31 @@ namespace ATR
         vkDestroyShaderModule(this->device, fragShaderModule, nullptr);
     }
 
+    void VkResourceManager::CreateFrameBuffers()
+    {
+        ATR_LOG("Creating Framebuffers...")
+
+        this->swapchainFrameBuffers.resize(this->swapchainImageViews.size());
+
+        for (size_t i = 0; i != this->swapchainImageViews.size(); ++i)
+        {
+            VkImageView attachments[] = { this->swapchainImageViews[i] };
+
+            VkFramebufferCreateInfo framebufferInfo = {
+                .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+                .renderPass = this->renderPass,
+                .attachmentCount = 1,
+                .pAttachments = attachments,
+                .width = this->swapChainConfig.extent.width,
+                .height = this->swapChainConfig.extent.height,
+                .layers = 1
+            };
+
+            if (vkCreateFramebuffer(this->device, &framebufferInfo, nullptr, &this->swapchainFrameBuffers[i]) != VK_SUCCESS)
+                throw Exception("Failed to create framebuffer", ExceptionType::INIT_PIPELINE);
+        }
+    }
+
     VKAPI_ATTR VkBool32 VKAPI_CALL VkResourceManager::DebugCallback(\
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, 
         VkDebugUtilsMessageTypeFlagsEXT messageType, 

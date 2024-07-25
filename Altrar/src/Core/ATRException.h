@@ -27,10 +27,10 @@ namespace ATR
                 typeStr += "[INIT] (Renderer)";
                 break;
             case ExceptionType::INIT_GLFW:
-                typeStr += "[INIT] (GLFW)";
+                typeStr += "[INIT] (GLFW Setup)";
                 break;
             case ExceptionType::INIT_VULKAN:
-                typeStr += "[INIT] (Vulkan)";
+                typeStr += "[INIT] (Vulkan Setup)";
                 break;
             case ExceptionType::INIT_SHADER:
                 typeStr += "[INIT] (Shader)";

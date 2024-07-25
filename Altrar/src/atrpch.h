@@ -26,3 +26,4 @@
 // ATR Core
 #include "ATRException.h"
 #include "ATROSSpec.h"
+#include "ATRConst.h"

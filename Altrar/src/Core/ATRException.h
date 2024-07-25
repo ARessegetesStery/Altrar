@@ -8,7 +8,7 @@ namespace ATR
     {
         INIT_RENDERER,
         INIT_GLFW, INIT_VULKAN,
-        SHADER_COMPILE
+        INIT_SHADER, INIT_PIPELINE
     };
 
     class Exception
@@ -32,8 +32,11 @@ namespace ATR
             case ExceptionType::INIT_VULKAN:
                 typeStr += "[INIT] (Vulkan)";
                 break;
-            case ExceptionType::SHADER_COMPILE:
-                typeStr += "[SHADER] (Compile)";
+            case ExceptionType::INIT_SHADER:
+                typeStr += "[INIT] (Shader)";
+                break;
+            case ExceptionType::INIT_PIPELINE:
+                typeStr += "[INIT] (Pipeline)";
                 break;
             }
 

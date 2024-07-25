@@ -278,10 +278,147 @@ namespace ATR
         ATR_LOG("Creating Graphics Pipeline...")
 
         // Compile Shaders
+        // TODO refactor and define paths in ATRConst.h
+        ATR_LOG_SUB("Compiling Shaders...")
         ATR::OS::Execute("scripts/platform/windows/compile-shader.bat");
 
-        this->vertShaderCode = ReadShaderCode("bin/shaders/vert.spv");
-        this->fragShaderCode = ReadShaderCode("bin/shaders/frag.spv");
+        std::vector<char> vertShaderCode = ReadShaderCode("bin/shaders/vert.spv");
+        std::vector<char> fragShaderCode = ReadShaderCode("bin/shaders/frag.spv");
+
+        // Shader modules can be destroyed after shader stage creation, and therefore is not a member variable of VkResourceManager
+        VkShaderModule vertShaderModule = CreateShaderModule(vertShaderCode);
+        VkShaderModule fragShaderModule = CreateShaderModule(fragShaderCode);
+
+        // Shader Stage Creation
+        ATR_LOG_SUB("Creating Shader Stages...")
+        VkPipelineShaderStageCreateInfo vertShaderStageInfo = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage = VK_SHADER_STAGE_VERTEX_BIT,
+            .module = vertShaderModule,
+            .pName = Const::DefaultShaderEntryPoint
+        };
+        VkPipelineShaderStageCreateInfo fragShaderStageInfo = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+            .module = fragShaderModule,
+            .pName = Const::DefaultShaderEntryPoint
+        };
+        VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+
+        // Configurable states
+        std::vector<VkDynamicState> dynamicStates = {
+            VK_DYNAMIC_STATE_VIEWPORT,
+            VK_DYNAMIC_STATE_SCISSOR
+        };
+
+        VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+            .dynamicStateCount = static_cast<UInt>(dynamicStates.size()),
+            .pDynamicStates = dynamicStates.data()
+        };
+
+        // Vertex Layout: TODO move the hardcoded values in the shader to the configurable ones here
+        ATR_LOG_SUB("Configuring Input Layouts...")
+        VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+            .vertexBindingDescriptionCount = 0,
+            .vertexAttributeDescriptionCount = 0
+        };
+
+        // Input Assembly
+        VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+            .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+            .primitiveRestartEnable = VK_FALSE
+        };
+
+        // Viewport and Scissor (Viewport States)
+        ATR_LOG_SUB("Configuring Viewport...")
+        VkViewport viewport = {
+            .x = 0.0f,
+            .y = 0.0f,
+            .width = (Float)this->swapChainConfig.extent.width,
+            .height = (Float)this->swapChainConfig.extent.height,
+            .minDepth = 0.0f,           // Notice Vulkan uses depth from 0 to 1
+            .maxDepth = 1.0f
+        };
+
+        VkRect2D scissor = {
+            .offset = { 0, 0 },
+            .extent = this->swapChainConfig.extent
+        };
+
+        // TODO see how this coops with dynamic configuration
+        VkPipelineViewportStateCreateInfo viewportState = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+            .viewportCount = 1,
+            .pViewports = &viewport,
+            .scissorCount = 1,
+            .pScissors = &scissor
+        };
+
+        // Rasterizer
+        ATR_LOG_SUB("Configuring Rasterizer...")
+        VkPipelineRasterizationStateCreateInfo rasterizer = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+            .depthClampEnable = VK_FALSE,
+            .rasterizerDiscardEnable = VK_FALSE,
+            .polygonMode = VK_POLYGON_MODE_FILL,
+            .cullMode = VK_CULL_MODE_BACK_BIT,
+            .frontFace = VK_FRONT_FACE_CLOCKWISE,
+            .depthBiasEnable = VK_FALSE,
+            .lineWidth = 1.0f
+        };
+
+        // Multisampling
+        VkPipelineMultisampleStateCreateInfo multisampling = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+            .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+            .sampleShadingEnable = VK_FALSE,
+            .minSampleShading = 1.0f,
+            .pSampleMask = nullptr,
+            .alphaToCoverageEnable = VK_FALSE,
+            .alphaToOneEnable = VK_FALSE
+        };
+
+        // Color Blending per buffer
+        VkPipelineColorBlendAttachmentState colorBlendAttachment = {
+            // Enable Alpha Blending
+            .blendEnable = VK_TRUE,
+            .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+            .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+            .colorBlendOp = VK_BLEND_OP_ADD,
+            .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+            .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+            .alphaBlendOp = VK_BLEND_OP_ADD,
+            .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
+        };
+
+        // Color Blending per Pipeline
+        VkPipelineColorBlendStateCreateInfo colorBlending = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+            .logicOpEnable = VK_FALSE,
+            .logicOp = VK_LOGIC_OP_COPY,
+            .attachmentCount = 1,
+            .pAttachments = &colorBlendAttachment,
+            .blendConstants = { 0.0f, 0.0f, 0.0f, 0.0f }
+        };
+
+        // Pipeline Layout for Uniforms
+        VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .setLayoutCount = 0,
+            .pSetLayouts = nullptr,
+            .pushConstantRangeCount = 0,
+            .pPushConstantRanges = nullptr
+        };
+
+        if (vkCreatePipelineLayout(this->device, &pipelineLayoutInfo, nullptr, &this->pipelineLayout) != VK_SUCCESS)
+            throw Exception("Failed to create pipeline layout", ExceptionType::INIT_PIPELINE);
+
+        // Cleanup Loaded ShaderCode
+        vkDestroyShaderModule(this->device, vertShaderModule, nullptr);
+        vkDestroyShaderModule(this->device, fragShaderModule, nullptr);
     }
 
     VKAPI_ATTR VkBool32 VKAPI_CALL VkResourceManager::DebugCallback(\
@@ -551,7 +688,7 @@ namespace ATR
     {
         std::ifstream file(path, std::ios::ate | std::ios::binary);
         if (!file.is_open())
-            throw Exception("Failed to open file: " + String(path), ExceptionType::SHADER_COMPILE);
+            throw Exception("Failed to open file: " + String(path), ExceptionType::INIT_SHADER);
 
         size_t fileSize = (size_t)file.tellg();
         std::vector<char> buffer(fileSize);
@@ -560,5 +697,20 @@ namespace ATR
         file.close();
 
         return buffer;
+    }
+
+    VkShaderModule VkResourceManager::CreateShaderModule(const std::vector<char>& code)
+    {
+        VkShaderModuleCreateInfo createInfo{
+            .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+            .codeSize = code.size(),
+            .pCode = reinterpret_cast<const UInt*>(code.data())
+        };
+
+        VkShaderModule shaderModule;
+        if (vkCreateShaderModule(this->device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+            throw Exception("Failed to create shader module", ExceptionType::INIT_SHADER);
+
+        return shaderModule;
     }
 }

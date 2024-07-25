@@ -61,6 +61,7 @@ namespace ATR
         void RetrieveSwapChainImages();
 
         std::vector<char> ReadShaderCode(const char* path);
+        VkShaderModule CreateShaderModule(const std::vector<char>& code);
 
     private:
         // Configs
@@ -87,15 +88,12 @@ namespace ATR
         std::array<VkQueue, QueueFamilyIndices::COUNT> queues;
         std::vector<VkImage> swapchainImages;
         std::vector<VkImageView> swapchainImageViews;
+        VkPipelineLayout pipelineLayout;                                // Specify Uniforms
 
         // Customized Infos
         QueueFamilyIndices queueIndices;
         SwapChainSupportDetails swapChainSupport;
         SwapChainConfig swapChainConfig;
-
-        // Shader Codes
-        std::vector<char> vertShaderCode;
-        std::vector<char> fragShaderCode;
         
         /// -----------------
 

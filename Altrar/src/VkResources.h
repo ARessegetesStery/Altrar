@@ -34,6 +34,7 @@ namespace ATR
         void CreateFrameBuffers();
         void CreateCommandPool();
         void CreateCommandBuffer();
+        void CreateSyncGadgets();
 
         /// Helpers
         // Init
@@ -100,6 +101,11 @@ namespace ATR
         VkCommandPool graphicsCommandPool;
         VkCommandBuffer graphicsCommandBuffer;
 
+        // Synchronization gadgets
+        VkSemaphore imageAvailableSemaphore;
+        VkSemaphore renderFinishedSemaphore;
+        VkFence inFlightFence;
+
         // Customized Infos
         QueueFamilyIndices queueIndices;
         SwapChainSupportDetails swapChainSupport;
@@ -123,6 +129,7 @@ namespace ATR
             .pUserData = nullptr
         };
         static inline Float defaultQueuePriority = 0.2f;
+        static inline VkClearValue defaultClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
     };
 
 }

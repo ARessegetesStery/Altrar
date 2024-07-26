@@ -33,6 +33,7 @@ namespace ATR
         this->CreateGraphicsPipeline();
         this->CreateCommandPool();
         this->CreateCommandBuffer();
+        this->CreateSyncGadgets();
     }
 
     void VkResourceManager::Update()
@@ -46,6 +47,12 @@ namespace ATR
         if (enabledValidation)
             this->DestroyDebugUtilsMessengerEXT(this->instance, this->debugMessenger, nullptr);
 
+        // Clean up synchronization gadgets
+        vkDestroySemaphore(this->device, this->imageAvailableSemaphore, nullptr);
+        vkDestroySemaphore(this->device, this->renderFinishedSemaphore, nullptr);
+        vkDestroyFence(this->device, this->inFlightFence, nullptr);
+
+        // Clean up device-dependent resources
         vkDestroyCommandPool(this->device, this->graphicsCommandPool, nullptr);
         vkDestroyPipeline(this->device, this->graphicsPipeline, nullptr);
         vkDestroyRenderPass(this->device, this->renderPass, nullptr);
@@ -56,10 +63,12 @@ namespace ATR
         for (const auto& framebuffer : swapchainFrameBuffers)
             vkDestroyFramebuffer(this->device, framebuffer, nullptr);
         vkDestroyDevice(this->device, nullptr);
-
+        
+        // Clean up instance-dependent resources
         vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
         vkDestroyInstance(this->instance, nullptr);
 
+        // Clean up GLFW resources
         glfwDestroyWindow(this->window);
         glfwTerminate();
     }
@@ -549,6 +558,25 @@ namespace ATR
             throw Exception("Failed to allocate command buffer", ExceptionType::INIT_PIPELINE);
     }
 
+    void VkResourceManager::CreateSyncGadgets()
+    {
+        ATR_LOG("Creating Synchronization Gadgets...")
+
+        VkSemaphoreCreateInfo semaphoreInfo = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
+        };
+        VkFenceCreateInfo fenceInfo = {
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        };
+
+        if (vkCreateSemaphore(this->device, &semaphoreInfo, nullptr, &this->imageAvailableSemaphore) != VK_SUCCESS ||
+            vkCreateSemaphore(this->device, &semaphoreInfo, nullptr, &this->renderFinishedSemaphore) != VK_SUCCESS)
+            throw Exception("Failed to create synchronization gadgets: semaphores", ExceptionType::INIT_PIPELINE);
+        
+        if (vkCreateFence(this->device, &fenceInfo, nullptr, &this->inFlightFence) != VK_SUCCESS)
+            throw Exception("Failed to create synchronization gadgets: fence", ExceptionType::INIT_PIPELINE);
+    }
+
     VKAPI_ATTR VkBool32 VKAPI_CALL VkResourceManager::DebugCallback(\
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, 
         VkDebugUtilsMessageTypeFlagsEXT messageType, 
@@ -810,6 +838,56 @@ namespace ATR
 
         if (this->verbose)
             ATR_PRINT("Retrieved " + std::to_string(imageCount) + " images in total in the swapchain.")
+    }
+
+    void VkResourceManager::RecordCommandBuffer(VkCommandBuffer commandBuffer, UInt imageIndex)
+    {
+        VkCommandBufferBeginInfo beginInfo = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .flags = 0,
+            .pInheritanceInfo = nullptr
+        };
+
+        if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
+            throw Exception("Failed to begin recording command buffer", ExceptionType::INIT_PIPELINE);
+
+        VkRenderPassBeginInfo renderPassInfo = {
+            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            .renderPass = this->renderPass,
+            .framebuffer = this->swapchainFrameBuffers[imageIndex],
+            .renderArea = {
+                .offset = { 0, 0 },
+                .extent = this->swapChainConfig.extent
+            },
+            .clearValueCount = 1,
+            .pClearValues = &VkResourceManager::defaultClearColor
+        };
+
+        vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->graphicsPipeline);
+
+            VkViewport viewport;
+            viewport.x = 0;
+            viewport.y = 0;
+            viewport.width = (Float)this->swapChainConfig.extent.width;
+            viewport.height = (Float)this->swapChainConfig.extent.height;
+            viewport.minDepth = 0.0f;
+            viewport.maxDepth = 1.0f;
+            vkCmdSetViewport(this->graphicsCommandBuffer, 0, 1, &viewport);
+
+            VkRect2D scissor;
+            scissor.offset = { 0, 0 };
+            scissor.extent = this->swapChainConfig.extent;
+            vkCmdSetScissor(this->graphicsCommandBuffer, 0, 1, &scissor);
+
+            vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+        vkCmdEndRenderPass(commandBuffer);
+
+        vkCmdEndRenderPass(commandBuffer);
+        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+            throw Exception("Failed to record command buffer", ExceptionType::INIT_PIPELINE);
     }
 
     std::vector<char> VkResourceManager::ReadShaderCode(const char* path)

@@ -31,6 +31,7 @@ namespace ATR
         this->CreateImageViews();
         this->CreateRenderPass();
         this->CreateGraphicsPipeline();
+        this->CreateFrameBuffers();
         this->CreateCommandPool();
         this->CreateCommandBuffer();
         this->CreateSyncGadgets();
@@ -38,12 +39,20 @@ namespace ATR
 
     void VkResourceManager::Update()
     {
+        // TODO move the main loop to Renderer, and encapsulate the update and closing condition as methods
         while (!glfwWindowShouldClose(this->window))
+        {
+            this->DrawFrame();
             glfwPollEvents();
+        }
     }
 
     void VkResourceManager::CleanUp()
     {
+        // Ensure that the device is subject to cleaning up
+        vkDeviceWaitIdle(this->device);
+
+        // Clean up validation layer
         if (enabledValidation)
             this->DestroyDebugUtilsMessengerEXT(this->instance, this->debugMessenger, nullptr);
 
@@ -322,12 +331,23 @@ namespace ATR
             .pColorAttachments = &colorAttachmentRef
         };
 
+        VkSubpassDependency dependency = {
+            .srcSubpass = VK_SUBPASS_EXTERNAL,
+            .dstSubpass = 0,
+            .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .srcAccessMask = 0,
+            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+        };
+
         VkRenderPassCreateInfo renderPass = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
             .attachmentCount = 1,
             .pAttachments = &colorAttachment,
             .subpassCount = 1,
-            .pSubpasses = &subpass
+            .pSubpasses = &subpass,
+            .dependencyCount = 1,
+            .pDependencies = &dependency
         };
 
         if (vkCreateRenderPass(this->device, &renderPass, nullptr, &this->renderPass) != VK_SUCCESS)
@@ -567,6 +587,7 @@ namespace ATR
         };
         VkFenceCreateInfo fenceInfo = {
             .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .flags = VK_FENCE_CREATE_SIGNALED_BIT
         };
 
         if (vkCreateSemaphore(this->device, &semaphoreInfo, nullptr, &this->imageAvailableSemaphore) != VK_SUCCESS ||
@@ -575,6 +596,49 @@ namespace ATR
         
         if (vkCreateFence(this->device, &fenceInfo, nullptr, &this->inFlightFence) != VK_SUCCESS)
             throw Exception("Failed to create synchronization gadgets: fence", ExceptionType::INIT_PIPELINE);
+    }
+
+    void VkResourceManager::DrawFrame()
+    {
+        vkWaitForFences(this->device, 1, &this->inFlightFence, VK_TRUE, UINT64_MAX);
+        vkResetFences(this->device, 1, &this->inFlightFence);
+
+        UInt imageIndex;
+        vkAcquireNextImageKHR(this->device, this->swapchain, UINT64_MAX, this->imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+
+        vkResetCommandBuffer(this->graphicsCommandBuffer, 0);
+        RecordCommandBuffer(this->graphicsCommandBuffer, imageIndex);
+
+        VkSemaphore waitSemaphores[] = { this->imageAvailableSemaphore };
+        VkSemaphore signalSemaphores[] = { this->renderFinishedSemaphore };
+        VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
+        VkSubmitInfo submitInfo = {
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = waitSemaphores,
+            .pWaitDstStageMask = waitStages,
+            .commandBufferCount = 1,
+            .pCommandBuffers = &this->graphicsCommandBuffer,
+            .signalSemaphoreCount = 1,
+            .pSignalSemaphores = &this->renderFinishedSemaphore
+        };
+
+        if (vkQueueSubmit(this->queues[QueueFamilyIndices::GRAPHICS], 1, &submitInfo, this->inFlightFence) != VK_SUCCESS)
+            throw Exception("Failed to submit draw command buffer", ExceptionType::UPDATE_RENDER);
+
+        VkSwapchainKHR swapchains[] = { this->swapchain };
+        VkPresentInfoKHR presentInfo = {
+            .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+            .waitSemaphoreCount = 1,
+            .pWaitSemaphores = signalSemaphores,
+            .swapchainCount = 1,
+            .pSwapchains = swapchains,
+            .pImageIndices = &imageIndex,
+            .pResults = nullptr
+        };
+
+        vkQueuePresentKHR(this->queues[QueueFamilyIndices::PRESENT], &presentInfo);
     }
 
     VKAPI_ATTR VkBool32 VKAPI_CALL VkResourceManager::DebugCallback(\
@@ -885,7 +949,6 @@ namespace ATR
 
         vkCmdEndRenderPass(commandBuffer);
 
-        vkCmdEndRenderPass(commandBuffer);
         if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
             throw Exception("Failed to record command buffer", ExceptionType::INIT_PIPELINE);
     }

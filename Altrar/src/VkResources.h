@@ -36,6 +36,9 @@ namespace ATR
         void CreateCommandBuffer();
         void CreateSyncGadgets();
 
+        // Update
+        void DrawFrame();
+
         /// Helpers
         // Init
         static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(

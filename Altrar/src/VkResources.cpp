@@ -112,7 +112,7 @@ namespace ATR
             createInfo.enabledLayerCount = 0;
 
         if (vkCreateInstance(&createInfo, nullptr, &this->instance) != VK_SUCCESS)
-            throw Exception("Failed to create instance", ExceptionType::INIT_VULKAN_SETUP);
+            throw Exception("Failed to create instance", ExceptionType::INIT_VULKAN);
     }
 
     void VkResourceManager::SetupDebugMessenger()
@@ -122,14 +122,14 @@ namespace ATR
             return;
 
         if (CreateDebugUtilsMessengerEXT(instance, &VkResourceManager::defaultDebugMessengerCreateInfo, nullptr, &debugMessenger) != VK_SUCCESS)
-            throw Exception("Failed to set up debug messenger", ExceptionType::INIT_VULKAN_SETUP);
+            throw Exception("Failed to set up debug messenger", ExceptionType::INIT_VULKAN);
     }
 
     void VkResourceManager::CreateSurface()
     {
         ATR_LOG("Creating Window Surface...")
         if (glfwCreateWindowSurface(this->instance, this->window, nullptr, &this->surface) != VK_SUCCESS)
-            throw Exception("Failed to create window surface", ExceptionType::INIT_VULKAN_SETUP);
+            throw Exception("Failed to create window surface", ExceptionType::INIT_VULKAN);
     }
 
     void VkResourceManager::SelectPhysicalDevice()
@@ -143,7 +143,7 @@ namespace ATR
         vkEnumeratePhysicalDevices(this->instance, &physicalDeviceCount, availablePhysicalDevices.data());
 
         if (availablePhysicalDevices.size() == 0)
-            throw Exception("No available GPU Found.", ExceptionType::INIT_VULKAN_SETUP);
+            throw Exception("No available GPU Found.", ExceptionType::INIT_VULKAN);
 
         for (auto& device : availablePhysicalDevices)
         {
@@ -152,7 +152,7 @@ namespace ATR
                 this->physicalDevice = device;
                 break;
             }
-            throw Exception("No Suitable GPU Found.", ExceptionType::INIT_VULKAN_SETUP);
+            throw Exception("No Suitable GPU Found.", ExceptionType::INIT_VULKAN);
         }
 
         if (VkResourceManager::verbose)
@@ -206,7 +206,7 @@ namespace ATR
 
         VkResult result = vkCreateDevice(this->physicalDevice, &deviceCreateInfo, nullptr, &this->device);
         if (result != VK_SUCCESS)
-            throw Exception("Failed to create logical device", ExceptionType::INIT_VULKAN_SETUP);
+            throw Exception("Failed to create logical device", ExceptionType::INIT_VULKAN);
 
         for (size_t index = 0; index != QueueFamilyIndices::COUNT; ++index)
             vkGetDeviceQueue(this->device, this->queueIndices.indices[index].value(), 0, &this->queues[index]);
@@ -249,7 +249,7 @@ namespace ATR
             createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
         if (vkCreateSwapchainKHR(this->device, &createInfo, nullptr, &this->swapchain) != VK_SUCCESS)
-            throw Exception("Failed to create swapchain", ExceptionType::INIT_VULKAN_SETUP);
+            throw Exception("Failed to create swapchain", ExceptionType::INIT_VULKAN);
 
         this->RetrieveSwapChainImages();
     }
@@ -283,7 +283,7 @@ namespace ATR
             };
 
             if (vkCreateImageView(this->device, &createInfo, nullptr, &this->swapchainImageViews[i]) != VK_SUCCESS)
-                throw Exception("Failed to create swapchain image views", ExceptionType::INIT_VULKAN_SETUP);
+                throw Exception("Failed to create swapchain image views", ExceptionType::INIT_VULKAN);
         }
     }
 
@@ -628,7 +628,7 @@ namespace ATR
             if (std::find_if(extensions.begin(), extensions.end(),
                 [&](const VkExtensionProperties& ext) { return strcmp(ext.extensionName, requiredExtensionNames[i]) == 0; }
             ) == extensions.cend())
-                throw Exception("Required extension not found: " + String(requiredExtensionNames[i]), ExceptionType::INIT_VULKAN_SETUP);
+                throw Exception("Required extension not found: " + String(requiredExtensionNames[i]), ExceptionType::INIT_VULKAN);
     }
 
     void VkResourceManager::FindValidationLayers()
@@ -658,7 +658,7 @@ namespace ATR
                 if (std::find_if(availableValidatedLayers.begin(), availableValidatedLayers.end(),
                     [&](const VkLayerProperties& layer) { return strcmp(layer.layerName, layerName) == 0; }
                 ) == availableValidatedLayers.cend())
-                    throw Exception("Validation layer " + String(layerName) + " not found", ExceptionType::INIT_VULKAN_SETUP);
+                    throw Exception("Validation layer " + String(layerName) + " not found", ExceptionType::INIT_VULKAN);
         }
     }
 

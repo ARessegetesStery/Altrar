@@ -42,6 +42,8 @@ namespace ATR
         // TODO move the main loop to Renderer, and encapsulate the update and closing condition as methods
         while (!glfwWindowShouldClose(this->window))
         {
+            ATR_LOG("Rendering Frame " << this->currentFrameNumber << " [" << this->currentFrameIndex << "]")
+                ++this->currentFrameNumber;
             this->DrawFrame();
             glfwPollEvents();
         }
@@ -57,12 +59,15 @@ namespace ATR
             this->DestroyDebugUtilsMessengerEXT(this->instance, this->debugMessenger, nullptr);
 
         // Clean up synchronization gadgets
-        vkDestroySemaphore(this->device, this->imageAvailableSemaphore, nullptr);
-        vkDestroySemaphore(this->device, this->renderFinishedSemaphore, nullptr);
-        vkDestroyFence(this->device, this->inFlightFence, nullptr);
+        for (auto& semaphore : this->imageAvailableSemaphores)
+            vkDestroySemaphore(this->device, semaphore, nullptr);
+        for (auto& semaphore : this->renderFinishedSemaphores)
+            vkDestroySemaphore(this->device, semaphore, nullptr);
+        for (auto& fence : this->inFlightFences)
+            vkDestroyFence(this->device, fence, nullptr);
 
         // Clean up device-dependent resources
-        vkDestroyCommandPool(this->device, this->graphicsCommandPool, nullptr);
+        vkDestroyCommandPool(this->device, this->graphicsCommandPool, nullptr);             // Command buffers are automatically freed when we free the command pool
         vkDestroyPipeline(this->device, this->graphicsPipeline, nullptr);
         vkDestroyRenderPass(this->device, this->renderPass, nullptr);
         vkDestroyPipelineLayout(this->device, this->pipelineLayout, nullptr);
@@ -567,20 +572,25 @@ namespace ATR
     void VkResourceManager::CreateCommandBuffer()
     {
         ATR_LOG("Creating Command Buffer...")
+        this->graphicsCommandBuffers.resize(VkResourceManager::maxFramesInFlight);
         VkCommandBufferAllocateInfo commandBufferInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
             .commandPool = this->graphicsCommandPool,
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-            .commandBufferCount = 1
+            .commandBufferCount = static_cast<UInt>(this->graphicsCommandBuffers.size())
         };
 
-        if (vkAllocateCommandBuffers(this->device, &commandBufferInfo, &this->graphicsCommandBuffer) != VK_SUCCESS)
-            throw Exception("Failed to allocate command buffer", ExceptionType::INIT_PIPELINE);
+        if (vkAllocateCommandBuffers(this->device, &commandBufferInfo, graphicsCommandBuffers.data()) != VK_SUCCESS)
+            throw Exception("Failed to allocate command buffers", ExceptionType::INIT_PIPELINE);
     }
 
     void VkResourceManager::CreateSyncGadgets()
     {
         ATR_LOG("Creating Synchronization Gadgets...")
+
+        this->imageAvailableSemaphores.resize(VkResourceManager::maxFramesInFlight);
+        this->renderFinishedSemaphores.resize(VkResourceManager::maxFramesInFlight);
+        this->inFlightFences.resize(VkResourceManager::maxFramesInFlight);
 
         VkSemaphoreCreateInfo semaphoreInfo = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
@@ -590,27 +600,30 @@ namespace ATR
             .flags = VK_FENCE_CREATE_SIGNALED_BIT
         };
 
-        if (vkCreateSemaphore(this->device, &semaphoreInfo, nullptr, &this->imageAvailableSemaphore) != VK_SUCCESS ||
-            vkCreateSemaphore(this->device, &semaphoreInfo, nullptr, &this->renderFinishedSemaphore) != VK_SUCCESS)
-            throw Exception("Failed to create synchronization gadgets: semaphores", ExceptionType::INIT_PIPELINE);
-        
-        if (vkCreateFence(this->device, &fenceInfo, nullptr, &this->inFlightFence) != VK_SUCCESS)
-            throw Exception("Failed to create synchronization gadgets: fence", ExceptionType::INIT_PIPELINE);
+        for (UInt i = 0; i != VkResourceManager::maxFramesInFlight; ++i)
+        {
+            if (vkCreateSemaphore(this->device, &semaphoreInfo, nullptr, &this->imageAvailableSemaphores[i]) != VK_SUCCESS ||
+                vkCreateSemaphore(this->device, &semaphoreInfo, nullptr, &this->renderFinishedSemaphores[i]) != VK_SUCCESS)
+                throw Exception("Failed to create synchronization gadgets: semaphores", ExceptionType::INIT_PIPELINE);
+
+            if (vkCreateFence(this->device, &fenceInfo, nullptr, &this->inFlightFences[i]) != VK_SUCCESS)
+                throw Exception("Failed to create synchronization gadgets: fence", ExceptionType::INIT_PIPELINE);
+        }
     }
 
     void VkResourceManager::DrawFrame()
     {
-        vkWaitForFences(this->device, 1, &this->inFlightFence, VK_TRUE, UINT64_MAX);
-        vkResetFences(this->device, 1, &this->inFlightFence);
+        vkWaitForFences(this->device, 1, &this->inFlightFences[this->currentFrameIndex], VK_TRUE, UINT64_MAX);
+        vkResetFences(this->device, 1, &this->inFlightFences[this->currentFrameIndex]);
 
         UInt imageIndex;
-        vkAcquireNextImageKHR(this->device, this->swapchain, UINT64_MAX, this->imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+        vkAcquireNextImageKHR(this->device, this->swapchain, UINT64_MAX, this->imageAvailableSemaphores[this->currentFrameIndex], VK_NULL_HANDLE, &imageIndex);
 
-        vkResetCommandBuffer(this->graphicsCommandBuffer, 0);
-        RecordCommandBuffer(this->graphicsCommandBuffer, imageIndex);
+        vkResetCommandBuffer(this->graphicsCommandBuffers[this->currentFrameIndex], 0);
+        RecordCommandBuffer(this->graphicsCommandBuffers[this->currentFrameIndex], imageIndex);
 
-        VkSemaphore waitSemaphores[] = { this->imageAvailableSemaphore };
-        VkSemaphore signalSemaphores[] = { this->renderFinishedSemaphore };
+        VkSemaphore waitSemaphores[] = { this->imageAvailableSemaphores[this->currentFrameIndex] };
+        VkSemaphore signalSemaphores[] = { this->renderFinishedSemaphores[this->currentFrameIndex] };
         VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
         VkSubmitInfo submitInfo = {
@@ -619,12 +632,12 @@ namespace ATR
             .pWaitSemaphores = waitSemaphores,
             .pWaitDstStageMask = waitStages,
             .commandBufferCount = 1,
-            .pCommandBuffers = &this->graphicsCommandBuffer,
+            .pCommandBuffers = &this->graphicsCommandBuffers[this->currentFrameIndex],
             .signalSemaphoreCount = 1,
-            .pSignalSemaphores = &this->renderFinishedSemaphore
+            .pSignalSemaphores = &this->renderFinishedSemaphores[this->currentFrameIndex]
         };
 
-        if (vkQueueSubmit(this->queues[QueueFamilyIndices::GRAPHICS], 1, &submitInfo, this->inFlightFence) != VK_SUCCESS)
+        if (vkQueueSubmit(this->queues[QueueFamilyIndices::GRAPHICS], 1, &submitInfo, this->inFlightFences[this->currentFrameIndex]) != VK_SUCCESS)
             throw Exception("Failed to submit draw command buffer", ExceptionType::UPDATE_RENDER);
 
         VkSwapchainKHR swapchains[] = { this->swapchain };
@@ -639,6 +652,8 @@ namespace ATR
         };
 
         vkQueuePresentKHR(this->queues[QueueFamilyIndices::PRESENT], &presentInfo);
+
+        this->currentFrameIndex = (this->currentFrameIndex + 1) % VkResourceManager::maxFramesInFlight;
     }
 
     VKAPI_ATTR VkBool32 VKAPI_CALL VkResourceManager::DebugCallback(\
@@ -938,12 +953,12 @@ namespace ATR
             viewport.height = (Float)this->swapChainConfig.extent.height;
             viewport.minDepth = 0.0f;
             viewport.maxDepth = 1.0f;
-            vkCmdSetViewport(this->graphicsCommandBuffer, 0, 1, &viewport);
+            vkCmdSetViewport(this->graphicsCommandBuffers[this->currentFrameIndex], 0, 1, &viewport);
 
             VkRect2D scissor;
             scissor.offset = { 0, 0 };
             scissor.extent = this->swapChainConfig.extent;
-            vkCmdSetScissor(this->graphicsCommandBuffer, 0, 1, &scissor);
+            vkCmdSetScissor(this->graphicsCommandBuffers[this->currentFrameIndex], 0, 1, &scissor);
 
             vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 

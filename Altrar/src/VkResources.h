@@ -10,7 +10,7 @@ namespace ATR
     class VkResourceManager
     {
     public:
-        VkResourceManager() = default;
+        VkResourceManager() = default;                  // No explicit constructor needed, init members in declaration
 
         // Configs
         void AbsorbConfigs(const Config& config);
@@ -102,12 +102,12 @@ namespace ATR
         VkPipelineLayout pipelineLayout;                                // Specify Uniforms
         VkPipeline graphicsPipeline;
         VkCommandPool graphicsCommandPool;
-        VkCommandBuffer graphicsCommandBuffer;
+        std::vector<VkCommandBuffer> graphicsCommandBuffers;
 
         // Synchronization gadgets
-        VkSemaphore imageAvailableSemaphore;
-        VkSemaphore renderFinishedSemaphore;
-        VkFence inFlightFence;
+        std::vector<VkSemaphore> imageAvailableSemaphores;
+        std::vector<VkSemaphore> renderFinishedSemaphores;
+        std::vector<VkFence> inFlightFences;
 
         // Customized Infos
         QueueFamilyIndices queueIndices;
@@ -118,6 +118,10 @@ namespace ATR
 
         // GLFW Handle
         GLFWwindow* window;
+
+        // Per-update Invariances
+        UInt currentFrameIndex = 0;
+        UInt currentFrameNumber = 0;
 
         // Default Vulkan Configs
         static inline VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerCreateInfo = {
@@ -131,8 +135,9 @@ namespace ATR
             .pfnUserCallback = VkResourceManager::DebugCallback,
             .pUserData = nullptr
         };
-        static inline Float defaultQueuePriority = 0.2f;
-        static inline VkClearValue defaultClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+        static inline constexpr Float defaultQueuePriority = 0.2f;
+        static inline constexpr VkClearValue defaultClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+        static inline constexpr UInt maxFramesInFlight = 2;
     };
 
 }

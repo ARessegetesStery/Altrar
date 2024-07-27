@@ -52,7 +52,11 @@ project "Altrar"
         systemversion "latest"
 
     filter "configurations:Debug"
-        defines "ATR_DEBUG"
+        defines 
+        {
+            "ATR_DEBUG",
+            "ATR_VERBOSE"
+        }
         symbols "on"
 
     filter "configurations:Release"

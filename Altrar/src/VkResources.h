@@ -78,7 +78,6 @@ namespace ATR
 
     private:
         // Configs
-        inline static Bool verbose = false;
         UInt width, height;
         Bool enabledValidation;
         std::vector<const char*> instanceExtensions;

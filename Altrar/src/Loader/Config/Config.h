@@ -7,7 +7,6 @@ namespace ATR
     {
         UInt width, height;
         Bool enableValidation;
-        Bool verbose;
         std::vector<String> validationLayers;
 
         Config();
@@ -21,9 +20,12 @@ namespace ATR
             layerStr = layerStr.substr(0, layerStr.size() - 4);
 
             return os <<
+#if defined ATR_VERBOSE
+                Format::item << "Verbose Mode on.\n" <<
+#else
+                Format::item << "Verbose Mode off.\n" <<
+#endif
                 Format::item << "Width: " << config.width << ", " << "Height: " << config.height << "\n" <<
-                std::boolalpha <<   // print bools as true/false
-                Format::item << "Verbose: " << config.verbose << "\n" <<
                 Format::item << "Enable Validation: " << config.enableValidation << "\n" <<
                 Format::item << "Validation Layers: \n" << Format::subitem << layerStr;
         }

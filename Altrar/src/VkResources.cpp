@@ -6,7 +6,6 @@ namespace ATR
 {
     void VkResourceManager::AbsorbConfigs(const Config& config)
     {
-        VkResourceManager::verbose = config.verbose;
         for (const String& layerName : config.validationLayers)
             this->validationLayers.push_back(layerName.c_str());
 
@@ -42,7 +41,7 @@ namespace ATR
         // TODO move the main loop to Renderer, and encapsulate the update and closing condition as methods
         while (!glfwWindowShouldClose(this->window))
         {
-            ATR_LOG("Rendering Frame " << this->currentFrameNumber << " [" << this->currentFrameIndex << "]")
+            ATR_LOG_VERBOSE("Rendering Frame " << this->currentFrameNumber << " [" << this->currentFrameIndex << "]")
                 ++this->currentFrameNumber;
             this->DrawFrame();
             glfwPollEvents();
@@ -176,13 +175,10 @@ namespace ATR
             throw Exception("No Suitable GPU Found.", ExceptionType::INIT_VULKAN);
         }
 
-        if (VkResourceManager::verbose)
-        {
-            VkPhysicalDeviceProperties deviceProperties;
-            vkGetPhysicalDeviceProperties(this->physicalDevice, &deviceProperties);
-            ATR_PRINT("Using Physical Device: " + String(deviceProperties.deviceName))
-            ATR_PRINT("Queue Family Indices: \n" << this->queueIndices)
-        }
+        VkPhysicalDeviceProperties deviceProperties;
+        vkGetPhysicalDeviceProperties(this->physicalDevice, &deviceProperties);
+        ATR_PRINT_VERBOSE("Using Physical Device: " + String(deviceProperties.deviceName))
+        ATR_PRINT_VERBOSE("Queue Family Indices: \n" << this->queueIndices)
     }
 
     void VkResourceManager::CreateLogicalDevice()
@@ -688,8 +684,8 @@ namespace ATR
     {
         if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
             ATR_ERROR(String("[Validation Layer] ") + pCallbackData->pMessage)
-        else if (VkResourceManager::verbose)
-            ATR_PRINT(String("[Validation Layer] ") + pCallbackData->pMessage)
+        else
+            ATR_PRINT_VERBOSE(String("[Validation Layer] ") + pCallbackData->pMessage)
 
         return VK_FALSE;
     }
@@ -742,16 +738,13 @@ namespace ATR
         if (enabledValidation)
             instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
-        if (VkResourceManager::verbose)
-        {
-            ATR_LOG_SECTION("Vulkan Available Extensions: (" + std::to_string(extensions.size()) + ")")
-            for (const auto& extension : extensions)
-                ATR_PRINT(String("- ") + extension.extensionName)
+        ATR_LOG_SECTION("Vulkan Available Extensions: (" + std::to_string(extensions.size()) + ")")
+        for (const auto& extension : extensions)
+            ATR_PRINT_VERBOSE(String("- ") + extension.extensionName)
 
-            ATR_LOG_SECTION("Vulkan Required Extensions: (" + std::to_string(instanceExtensions.size()) + ")")
-            for (const auto& extension : instanceExtensions)
-                ATR_PRINT(String("- ") + extension)
-        }
+        ATR_LOG_SECTION("Vulkan Required Extensions: (" + std::to_string(instanceExtensions.size()) + ")")
+        for (const auto& extension : instanceExtensions)
+            ATR_PRINT_VERBOSE(String("- ") + extension)
 
         // Check if all required extensions are available
         for (UInt i = 0; i != requiredExtensionCount; ++i)
@@ -772,16 +765,13 @@ namespace ATR
             std::vector<VkLayerProperties> availableValidatedLayers(validatedLayerCount);
             vkEnumerateInstanceLayerProperties(&validatedLayerCount, availableValidatedLayers.data());
 
-            if (VkResourceManager::verbose)
-            {
-                ATR_LOG_SECTION("Vulkan Available Layers: (" + std::to_string(validatedLayerCount) + ")")
-                for (const auto& layer : availableValidatedLayers)
-                    ATR_PRINT(String("- ") + layer.layerName)
+            ATR_LOG_SECTION("Vulkan Available Layers: (" + std::to_string(validatedLayerCount) + ")")
+            for (const auto& layer : availableValidatedLayers)
+                ATR_PRINT_VERBOSE(String("- ") + layer.layerName)
 
-                ATR_LOG_SECTION("Vulkan Required Layers: (" + std::to_string(this->validationLayers.size()) + ")")
-                for (const auto& layer : this->validationLayers)
-                    ATR_PRINT(String("- ") + layer)
-            }
+            ATR_LOG_SECTION("Vulkan Required Layers: (" + std::to_string(this->validationLayers.size()) + ")")
+            for (const auto& layer : this->validationLayers)
+                ATR_PRINT_VERBOSE(String("- ") + layer)
 
             // Check if all validation layers are available
             for (auto& layerName : this->validationLayers)
@@ -938,8 +928,7 @@ namespace ATR
         this->swapchainImages.resize(imageCount);
         vkGetSwapchainImagesKHR(this->device, this->swapchain, &imageCount, this->swapchainImages.data());
 
-        if (this->verbose)
-            ATR_PRINT("Retrieved " + std::to_string(imageCount) + " images in total in the swapchain.")
+        ATR_PRINT_VERBOSE("Retrieved " + std::to_string(imageCount) + " images in total in the swapchain.")
     }
 
     void VkResourceManager::RecordCommandBuffer(VkCommandBuffer commandBuffer, UInt imageIndex)
@@ -993,6 +982,16 @@ namespace ATR
 
     void VkResourceManager::RecreateSwapchain()
     {
+        // If window is minimized, pause update
+        int width = 0, height = 0;
+        glfwGetFramebufferSize(this->window, &width, &height);
+        while (width == 0 || height == 0)
+        {
+            // TODO get rid of busy waiting here
+            glfwGetFramebufferSize(this->window, &width, &height);
+            glfwWaitEvents();
+        }
+
         vkDeviceWaitIdle(this->device);
 
         CleanUpSwapchain();
@@ -1035,7 +1034,7 @@ namespace ATR
     void VkResourceManager::FramebufferResizeCallback(GLFWwindow* window, int width, int height)
     {
         auto app = reinterpret_cast<VkResourceManager*>(glfwGetWindowUserPointer(window));
-        ATR_LOG("Window Resizing... new width: " << width << ", height: " << height)
+        ATR_LOG_VERBOSE("Window Resizing... new width: " << width << ", height: " << height)
         app->frameBufferResized = true;
     }
 }

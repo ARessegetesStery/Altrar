@@ -90,6 +90,8 @@ namespace ATR
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
         this->window = glfwCreateWindow(this->width, this->height, "Altrar", nullptr, nullptr);
+        glfwSetWindowUserPointer(this->window, this);
+        glfwSetFramebufferSizeCallback(this->window, VkResourceManager::FramebufferResizeCallback);
         if (!window)
             throw Exception("Failed to create window", ExceptionType::INIT_GLFW);
     }
@@ -610,7 +612,6 @@ namespace ATR
     void VkResourceManager::DrawFrame()
     {
         vkWaitForFences(this->device, 1, &this->inFlightFences[this->currentFrameIndex], VK_TRUE, UINT64_MAX);
-        vkResetFences(this->device, 1, &this->inFlightFences[this->currentFrameIndex]);
 
         UInt imageIndex;
         VkResult result = vkAcquireNextImageKHR(this->device, this->swapchain, UINT64_MAX, this->imageAvailableSemaphores[this->currentFrameIndex], VK_NULL_HANDLE, &imageIndex);
@@ -622,6 +623,8 @@ namespace ATR
         }
         else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
             throw Exception("Failed to acquire swapchain image", ExceptionType::UPDATE_RENDER);
+
+        vkResetFences(this->device, 1, &this->inFlightFences[this->currentFrameIndex]);             // Reset here to avoid deadlock
 
         vkResetCommandBuffer(this->graphicsCommandBuffers[this->currentFrameIndex], 0);
         RecordCommandBuffer(this->graphicsCommandBuffers[this->currentFrameIndex], imageIndex);
@@ -656,8 +659,11 @@ namespace ATR
         };
 
         result = vkQueuePresentKHR(this->queues[QueueFamilyIndices::PRESENT], &presentInfo);
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || this->frameBufferResized)
+        {
             this->RecreateSwapchain();
+            this->frameBufferResized = false;
+        }
         else if (result != VK_SUCCESS)
             throw Exception("Failed to present swapchain image", ExceptionType::UPDATE_RENDER);
 
@@ -1024,5 +1030,12 @@ namespace ATR
             throw Exception("Failed to create shader module", ExceptionType::INIT_SHADER);
 
         return shaderModule;
+    }
+
+    void VkResourceManager::FramebufferResizeCallback(GLFWwindow* window, int width, int height)
+    {
+        auto app = reinterpret_cast<VkResourceManager*>(glfwGetWindowUserPointer(window));
+        ATR_LOG("Window Resizing... new width: " << width << ", height: " << height)
+        app->frameBufferResized = true;
     }
 }

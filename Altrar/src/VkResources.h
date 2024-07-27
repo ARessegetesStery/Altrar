@@ -126,6 +126,10 @@ namespace ATR
         // Per-update Invariances
         UInt currentFrameIndex = 0;
         UInt currentFrameNumber = 0;
+        Bool frameBufferResized = false;
+
+        // Static (global) functions
+        static void FramebufferResizeCallback(GLFWwindow* window, int width, int height);
 
         // Default Vulkan Configs
         static inline VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerCreateInfo = {

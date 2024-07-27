@@ -71,11 +71,7 @@ namespace ATR
         vkDestroyPipeline(this->device, this->graphicsPipeline, nullptr);
         vkDestroyRenderPass(this->device, this->renderPass, nullptr);
         vkDestroyPipelineLayout(this->device, this->pipelineLayout, nullptr);
-        vkDestroySwapchainKHR(this->device, this->swapchain, nullptr);
-        for (const auto& view : swapchainImageViews)
-            vkDestroyImageView(this->device, view, nullptr);
-        for (const auto& framebuffer : swapchainFrameBuffers)
-            vkDestroyFramebuffer(this->device, framebuffer, nullptr);
+        this->CleanUpSwapchain();
         vkDestroyDevice(this->device, nullptr);
         
         // Clean up instance-dependent resources
@@ -92,7 +88,7 @@ namespace ATR
         ATR_LOG_PART("Initializing Window");
         glfwInit();
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
         this->window = glfwCreateWindow(this->width, this->height, "Altrar", nullptr, nullptr);
         if (!window)
             throw Exception("Failed to create window", ExceptionType::INIT_GLFW);
@@ -617,7 +613,15 @@ namespace ATR
         vkResetFences(this->device, 1, &this->inFlightFences[this->currentFrameIndex]);
 
         UInt imageIndex;
-        vkAcquireNextImageKHR(this->device, this->swapchain, UINT64_MAX, this->imageAvailableSemaphores[this->currentFrameIndex], VK_NULL_HANDLE, &imageIndex);
+        VkResult result = vkAcquireNextImageKHR(this->device, this->swapchain, UINT64_MAX, this->imageAvailableSemaphores[this->currentFrameIndex], VK_NULL_HANDLE, &imageIndex);
+
+        if (result == VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            this->RecreateSwapchain();
+            return;
+        }
+        else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+            throw Exception("Failed to acquire swapchain image", ExceptionType::UPDATE_RENDER);
 
         vkResetCommandBuffer(this->graphicsCommandBuffers[this->currentFrameIndex], 0);
         RecordCommandBuffer(this->graphicsCommandBuffers[this->currentFrameIndex], imageIndex);
@@ -651,9 +655,22 @@ namespace ATR
             .pResults = nullptr
         };
 
-        vkQueuePresentKHR(this->queues[QueueFamilyIndices::PRESENT], &presentInfo);
+        result = vkQueuePresentKHR(this->queues[QueueFamilyIndices::PRESENT], &presentInfo);
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+            this->RecreateSwapchain();
+        else if (result != VK_SUCCESS)
+            throw Exception("Failed to present swapchain image", ExceptionType::UPDATE_RENDER);
 
         this->currentFrameIndex = (this->currentFrameIndex + 1) % VkResourceManager::maxFramesInFlight;
+    }
+
+    void VkResourceManager::CleanUpSwapchain()
+    {
+        for (const auto& view : swapchainImageViews)
+            vkDestroyImageView(this->device, view, nullptr);
+        for (const auto& framebuffer : swapchainFrameBuffers)
+            vkDestroyFramebuffer(this->device, framebuffer, nullptr);
+        vkDestroySwapchainKHR(this->device, this->swapchain, nullptr);
     }
 
     VKAPI_ATTR VkBool32 VKAPI_CALL VkResourceManager::DebugCallback(\
@@ -966,6 +983,17 @@ namespace ATR
 
         if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
             throw Exception("Failed to record command buffer", ExceptionType::INIT_PIPELINE);
+    }
+
+    void VkResourceManager::RecreateSwapchain()
+    {
+        vkDeviceWaitIdle(this->device);
+
+        CleanUpSwapchain();
+
+        CreateSwapchain();
+        CreateImageViews();
+        CreateFrameBuffers();
     }
 
     std::vector<char> VkResourceManager::ReadShaderCode(const char* path)

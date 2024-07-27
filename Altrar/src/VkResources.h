@@ -38,6 +38,10 @@ namespace ATR
 
         // Update
         void DrawFrame();
+        void RecreateSwapchain();
+
+        // Clean Up
+        void CleanUpSwapchain();
 
         /// Helpers
         // Init

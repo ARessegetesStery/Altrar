@@ -47,16 +47,11 @@ namespace ATR
         this->CreateSyncGadgets();
     }
 
-    void VkResourceManager::Update()
+    void VkResourceManager::UpdateFrame()
     {
-        // TODO move the main loop to Renderer, and encapsulate the update and closing condition as methods
-        while (!glfwWindowShouldClose(this->window))
-        {
-            ATR_LOG_VERBOSE("Rendering Frame " << this->currentFrameNumber << " [" << this->currentFrameIndex << "]")
-                ++this->currentFrameNumber;
-            this->DrawFrame();
-            glfwPollEvents();
-        }
+        this->updateInfo = "[ Frame Index: " + std::to_string(this->currentFrameIndex) + " ]";
+        this->DrawFrame();
+        glfwPollEvents();
     }
 
     void VkResourceManager::CleanUp()

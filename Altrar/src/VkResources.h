@@ -18,7 +18,8 @@ namespace ATR
 
         // Major Components
         void Init();
-        void Update();
+        void UpdateFrame();
+        inline Bool ShouldClose() { return glfwWindowShouldClose(this->window); }
         void CleanUp();
 
         // Initializing Vulkan
@@ -89,6 +90,9 @@ namespace ATR
         UInt FindMemoryType(UInt typeFilter, VkMemoryPropertyFlags properties);
         void UpdateUniformBuffer(UInt imageIndex);
 
+        // Getter/Setters
+        inline String GetUpdateInfo() { return this->updateInfo; }
+
     private:
         // Configs
         UInt width, height;
@@ -151,8 +155,8 @@ namespace ATR
 
         // Per-update Invariances
         UInt currentFrameIndex = 0;
-        UInt currentFrameNumber = 0;
         Bool frameBufferResized = false;
+        String updateInfo = "";
 
         // Static (global) functions
         // TODO may want to have a separate class & files to handle callbacks

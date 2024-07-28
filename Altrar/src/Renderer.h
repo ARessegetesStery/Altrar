@@ -1,6 +1,8 @@
 #pragma once
 #include "atrfwd.h"
 
+#include <chrono>
+
 #include "Loader/Config/Config.h"
 #include "VkResources.h"
 
@@ -19,8 +21,15 @@ namespace ATR
         void Update();
         void Cleanup();
 
+        // Helpers
+        void UpdateStats();
+
     private:
         Config config;
         VkResourceManager vkResources;
+
+        // Performance stats
+        UInt frameCount = 0;
+        std::chrono::steady_clock::time_point lastTime = std::chrono::high_resolution_clock::now();
     };
 }

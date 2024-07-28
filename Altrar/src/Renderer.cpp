@@ -38,11 +38,27 @@ namespace ATR
 
     void Renderer::Update()
     {
-        this->vkResources.Update();
+        while (!this->vkResources.ShouldClose())
+        {
+            this->vkResources.UpdateFrame();
+            UpdateStats();
+        }
     }
 
     void Renderer::Cleanup()
     {
         this->vkResources.CleanUp();
+    }
+
+    void Renderer::UpdateStats()
+    {
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        Float duration = std::chrono::duration<Float, std::chrono::seconds::period>(currentTime - this->lastTime).count();
+        Float fps = 1.0f / duration;
+        this->lastTime = currentTime;
+        ATR_LOG_VERBOSE("Rendering Frame " << this->frameCount << " [ FPS: " 
+            << std::fixed << std::setfill(' ') << std::right << std::setw(7) << std::setprecision(2) << fps << " ] "
+            << this->vkResources.GetUpdateInfo())
+        ++frameCount;
     }
 }

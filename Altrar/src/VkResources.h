@@ -66,18 +66,21 @@ namespace ATR
 
         void GetRequiredExtensions();
         void FindValidationLayers();                            // Validation Layers are specified by the user, not infrastructure
+        void RetrieveSwapChainImages();
 
         Bool DeviceSuitable(VkPhysicalDevice device);
         void FindQueueFamilies(VkPhysicalDevice device);
         Bool CheckDeviceExtensionSupport(VkPhysicalDevice device);
         void QuerySwapChainSupport(VkPhysicalDevice device);
         void ConfigureSwapChain(SwapChainSupportDetails support);
-        void RetrieveSwapChainImages();
-        void RecordCommandBuffer(VkCommandBuffer commandBuffer, UInt imageIndex);
-        UInt FindMemoryType(UInt typeFilter, VkMemoryPropertyFlags properties);
+        void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 
         std::vector<char> ReadShaderCode(const char* path);
         VkShaderModule CreateShaderModule(const std::vector<char>& code);
+
+        // Update
+        void RecordCommandBuffer(VkCommandBuffer commandBuffer, UInt imageIndex);
+        UInt FindMemoryType(UInt typeFilter, VkMemoryPropertyFlags properties);
 
     private:
         // Configs

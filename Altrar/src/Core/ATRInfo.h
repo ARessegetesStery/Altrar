@@ -30,7 +30,7 @@ namespace ATR
 #define ATR_LOG_ACTION(name) {std::cout << ATR_FILL_STR_WITH('#', ATR_FILL_LEFT, ATR_FILL_LENGTH, name) << std::endl;}
 #define ATR_LOG_ACTION_END {std::cout << ATR_FILL_STR_WITH('#', ATR_FILL_LEFT, ATR_FILL_LENGTH, "") << std::endl;}
 
-#ifdef ATR_VERBOSE
+#if defined ATR_VERBOSE
 	#define ATR_LOG_VERBOSE(x) {std::cout << "[Log] >> " << x << std::endl;}
 	#define ATR_PRINT_VERBOSE(x) {std::cout << x << std::endl;}
 #else

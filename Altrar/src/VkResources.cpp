@@ -572,38 +572,21 @@ namespace ATR
     {
         // TODO make this more flexible
         ATR_LOG("Creating Vertex Buffer...")
-        VkBufferCreateInfo bufferInfo = {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size = sizeof(vertices[0]) * vertices.size(),
-            .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-            .sharingMode = VK_SHARING_MODE_EXCLUSIVE
-        };
-
-        if (vkCreateBuffer(this->device, &bufferInfo, nullptr, &this->vertexBuffer) != VK_SUCCESS)
-            throw Exception("Failed to create vertex buffer", ExceptionType::INIT_PIPELINE);
-
-        VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(this->device, this->vertexBuffer, &memRequirements);
-
-        VkMemoryAllocateInfo allocInfo = {
-            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-            .allocationSize = memRequirements.size,
-            .memoryTypeIndex = this->FindMemoryType(
-                memRequirements.memoryTypeBits, 
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-                // Host coherency implies that changes to the memory on the host will NOTIFY (but not necessarily immediately visible to) the device
-                // Device visibility depends on its actual memory model and is ensured by the driver
-            )
-        };
-
-        if (vkAllocateMemory(this->device, &allocInfo, nullptr, &this->vertexBufferMemory) != VK_SUCCESS)
-            throw Exception("Failed to allocate vertex buffer memory", ExceptionType::INIT_PIPELINE);
-
-        vkBindBufferMemory(this->device, this->vertexBuffer, this->vertexBufferMemory, 0);
+        
+        VkDeviceSize bufferSize = sizeof(VkResourceManager::vertices[0]) * VkResourceManager::vertices.size();
+        this->CreateBuffer(
+            bufferSize, 
+            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+            // Host coherency implies that changes to the memory on the host will NOTIFY (but not necessarily immediately visible to) the device
+            // Device visibility depends on its actual memory model and is ensured by the driver
+            this->vertexBuffer, 
+            this->vertexBufferMemory
+        );
 
         void* data;
-        vkMapMemory(this->device, this->vertexBufferMemory, 0, bufferInfo.size, 0, &data);
-            memcpy(data, VkResourceManager::vertices.data(), (size_t)bufferInfo.size);
+        vkMapMemory(this->device, this->vertexBufferMemory, 0, bufferSize, 0, &data);
+            memcpy(data, VkResourceManager::vertices.data(), static_cast<size_t>(bufferSize));
         vkUnmapMemory(this->device, this->vertexBufferMemory);
     }
 
@@ -962,6 +945,33 @@ namespace ATR
 
             this->swapChainConfig.extent = actualExtent;
         }
+    }
+
+    void VkResourceManager::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
+    {
+        VkBufferCreateInfo bufferInfo = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size = size,
+            .usage = usage,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+        };
+
+        if (vkCreateBuffer(this->device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
+            throw Exception("Failed to create buffer", ExceptionType::INIT_PIPELINE);
+
+        VkMemoryRequirements memRequirements;
+        vkGetBufferMemoryRequirements(this->device, buffer, &memRequirements);
+
+        VkMemoryAllocateInfo allocInfo = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .allocationSize = memRequirements.size,
+            .memoryTypeIndex = this->FindMemoryType(memRequirements.memoryTypeBits, properties)
+        };
+
+        if (vkAllocateMemory(this->device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
+            throw Exception("Failed to allocate buffer memory", ExceptionType::INIT_PIPELINE);
+
+        vkBindBufferMemory(this->device, buffer, bufferMemory, 0);
     }
 
     void VkResourceManager::RetrieveSwapChainImages()

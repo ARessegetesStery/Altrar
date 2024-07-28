@@ -31,11 +31,15 @@ namespace ATR
         void CreateSwapchain();
         void CreateImageViews();
         void CreateRenderPass();
+        void CreateDescriptorSetLayout();
         void CreateGraphicsPipeline();
         void CreateFrameBuffers();
         void CreateCommandPool();
         void CreateVertexBuffer();
         void CreateIndexBuffer();
+        void CreateUniformBuffer();
+        void CreateDescriptorPool();
+        void CreateDescriptorSets();
         void CreateCommandBuffer();
         void CreateSyncGadgets();
 
@@ -83,6 +87,7 @@ namespace ATR
         // Update
         void RecordCommandBuffer(VkCommandBuffer commandBuffer, UInt imageIndex);
         UInt FindMemoryType(UInt typeFilter, VkMemoryPropertyFlags properties);
+        void UpdateUniformBuffer(UInt imageIndex);
 
     private:
         // Configs
@@ -103,19 +108,31 @@ namespace ATR
         // Vulkan Components
         VkPhysicalDevice physicalDevice;
         VkDevice device;
+
         VkSurfaceKHR surface;
         VkSwapchainKHR swapchain;
         std::array<VkQueue, QueueFamilyIndices::COUNT> queues;
         std::vector<VkImage> swapchainImages;
         std::vector<VkImageView> swapchainImageViews;
         std::vector<VkFramebuffer> swapchainFrameBuffers;
+
         VkRenderPass renderPass;
+        VkDescriptorSetLayout descriptorSetLayout;
         VkPipelineLayout pipelineLayout;                                // Specify Uniforms
         VkPipeline graphicsPipeline;
+
         VkCommandPool graphicsCommandPool, transferCommandPool;
         std::vector<VkCommandBuffer> graphicsCommandBuffers;
+
         VkBuffer vertexBuffer, indexBuffer;                             // Actual buffer on device
         VkDeviceMemory vertexBufferMemory, indexBufferMemory;
+
+        std::vector<VkBuffer> uniformBuffers;
+        std::vector<VkDeviceMemory> uniformBuffersMemory;
+        std::vector<void*> uniformBufferMappedMemory;
+
+        VkDescriptorPool descriptorPool;
+        std::vector<VkDescriptorSet> descriptorSets;                    // Allocated from descriptorPool, similar to commandBuffers from commandPool
 
         // Synchronization gadgets
         std::vector<VkSemaphore> imageAvailableSemaphores;

@@ -2,6 +2,9 @@
 
 #include "VkResources.h"
 
+#include <chrono>
+#include "glm/gtc/matrix_transform.hpp"
+
 namespace ATR
 {
     void VkResourceManager::AbsorbConfigs(const Config& config)
@@ -29,11 +32,17 @@ namespace ATR
         this->CreateSwapchain();
         this->CreateImageViews();
         this->CreateRenderPass();
+        this->CreateDescriptorSetLayout();
         this->CreateGraphicsPipeline();
         this->CreateFrameBuffers();
         this->CreateCommandPool();
+
+        // Setup Buffers and Syncing
         this->CreateVertexBuffer();
         this->CreateIndexBuffer();
+        this->CreateUniformBuffer();
+        this->CreateDescriptorPool();
+        this->CreateDescriptorSets();
         this->CreateCommandBuffer();
         this->CreateSyncGadgets();
     }
@@ -80,6 +89,15 @@ namespace ATR
         vkDestroyRenderPass(this->device, this->renderPass, nullptr);
         vkDestroyPipelineLayout(this->device, this->pipelineLayout, nullptr);
         this->CleanUpSwapchain();
+
+        for (size_t i = 0; i != VkResourceManager::maxFramesInFlight; ++i)
+        {
+            vkDestroyBuffer(this->device, this->uniformBuffers[i], nullptr);
+            vkFreeMemory(this->device, this->uniformBuffersMemory[i], nullptr);
+        }
+
+        vkDestroyDescriptorPool(this->device, this->descriptorPool, nullptr);
+        vkDestroyDescriptorSetLayout(this->device, this->descriptorSetLayout, nullptr);
 
         vkDestroyDevice(this->device, nullptr);
         
@@ -364,6 +382,27 @@ namespace ATR
             throw Exception("Failed to create render pass", ExceptionType::INIT_PIPELINE);
     }
 
+    void VkResourceManager::CreateDescriptorSetLayout()
+    {
+        ATR_LOG("Creating Descriptor Set Layout...")
+        VkDescriptorSetLayoutBinding uboLayoutBinding = {
+            .binding = 0,
+            .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+            .pImmutableSamplers = nullptr
+        };
+
+        VkDescriptorSetLayoutCreateInfo layoutInfo = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .bindingCount = 1,
+            .pBindings = &uboLayoutBinding
+        };
+
+        if (vkCreateDescriptorSetLayout(this->device, &layoutInfo, nullptr, &this->descriptorSetLayout) != VK_SUCCESS)
+            throw Exception("Failed to create descriptor set layout", ExceptionType::INIT_PIPELINE);
+    }
+
     void VkResourceManager::CreateGraphicsPipeline()
     {
         ATR_LOG("Creating Graphics Pipeline...")
@@ -458,7 +497,7 @@ namespace ATR
             .rasterizerDiscardEnable = VK_FALSE,
             .polygonMode = VK_POLYGON_MODE_FILL,
             .cullMode = VK_CULL_MODE_BACK_BIT,
-            .frontFace = VK_FRONT_FACE_CLOCKWISE,
+            .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,            
             .depthBiasEnable = VK_FALSE,
             .lineWidth = 1.0f
         };
@@ -500,8 +539,8 @@ namespace ATR
         // Pipeline Layout for Uniforms
         VkPipelineLayoutCreateInfo pipelineLayoutInfo = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .setLayoutCount = 0,
-            .pSetLayouts = nullptr,
+            .setLayoutCount = 1,
+            .pSetLayouts = &this->descriptorSetLayout,
             .pushConstantRangeCount = 0,
             .pPushConstantRanges = nullptr
         };
@@ -662,6 +701,92 @@ namespace ATR
         vkFreeMemory(this->device, stagingBufferMemory, nullptr);
     }
 
+    void VkResourceManager::CreateUniformBuffer()
+    {
+        ATR_LOG("Creating Uniform Buffer...")
+        VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+
+        this->uniformBuffers.resize(VkResourceManager::maxFramesInFlight);
+        this->uniformBuffersMemory.resize(VkResourceManager::maxFramesInFlight);
+        this->uniformBufferMappedMemory.resize(VkResourceManager::maxFramesInFlight);
+
+        // We are not using staging buffer here because the uniform buffer is updated every frame
+        //  Frequent allocation may in fact hamper performance
+        for (UInt i = 0; i != VkResourceManager::maxFramesInFlight; ++i)
+        {
+            this->CreateBuffer(
+                bufferSize,
+                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                this->uniformBuffers[i],
+                this->uniformBuffersMemory[i]
+            );
+
+            // no vkUnmap is here as uniforms may be updated frequently throughout the application
+            //  a persistent memory mapping is necessary (and more performant)
+            vkMapMemory(this->device, this->uniformBuffersMemory[i], 0, bufferSize, 0, &this->uniformBufferMappedMemory[i]);
+        }
+    }
+
+    void VkResourceManager::CreateDescriptorPool()
+    {
+        ATR_LOG("Creating Descriptor Pool...")
+        VkDescriptorPoolSize poolSize = {
+            .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .descriptorCount = static_cast<UInt>(VkResourceManager::maxFramesInFlight)
+        };
+
+        VkDescriptorPoolCreateInfo poolInfo = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+            .maxSets = static_cast<UInt>(VkResourceManager::maxFramesInFlight),
+            .poolSizeCount = 1,
+            .pPoolSizes = &poolSize
+        };
+
+        if (vkCreateDescriptorPool(this->device, &poolInfo, nullptr, &this->descriptorPool) != VK_SUCCESS)
+            throw Exception("Failed to create descriptor pool", ExceptionType::INIT_PIPELINE);
+    }
+
+    void VkResourceManager::CreateDescriptorSets()
+    {
+        ATR_LOG("Creating Descriptor Sets...")
+        std::vector<VkDescriptorSetLayout> layouts(VkResourceManager::maxFramesInFlight, this->descriptorSetLayout);
+
+        // One descriptor set for each frame in flight, with the same layout (the one specified by struct UniformBufferObject)
+        VkDescriptorSetAllocateInfo allocInfo = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .descriptorPool = this->descriptorPool,
+            .descriptorSetCount = static_cast<UInt>(VkResourceManager::maxFramesInFlight),
+            .pSetLayouts = layouts.data()
+        };
+
+        this->descriptorSets.resize(VkResourceManager::maxFramesInFlight);
+        if (vkAllocateDescriptorSets(this->device, &allocInfo, this->descriptorSets.data()) != VK_SUCCESS)
+            throw Exception("Failed to allocate descriptor sets", ExceptionType::INIT_PIPELINE);
+
+        // Now fill in the descriptor sets
+        for (UInt i = 0; i != VkResourceManager::maxFramesInFlight; ++i)
+        {
+            VkDescriptorBufferInfo bufferInfo = {
+                .buffer = this->uniformBuffers[i],
+                .offset = 0,
+                .range = sizeof(UniformBufferObject)
+            };
+
+            VkWriteDescriptorSet descriptorWrite = {
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = this->descriptorSets[i],
+                .dstBinding = 0,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                .pBufferInfo = &bufferInfo
+            };
+
+            vkUpdateDescriptorSets(this->device, 1, &descriptorWrite, 0, nullptr);
+        }
+    }
+
     void VkResourceManager::CreateCommandBuffer()
     {
         ATR_LOG("Creating Command Buffer...")
@@ -727,6 +852,8 @@ namespace ATR
         VkSemaphore waitSemaphores[] = { this->imageAvailableSemaphores[this->currentFrameIndex] };
         VkSemaphore signalSemaphores[] = { this->renderFinishedSemaphores[this->currentFrameIndex] };
         VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
+        this->UpdateUniformBuffer(this->currentFrameIndex);
 
         VkSubmitInfo submitInfo = {
             .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -1160,6 +1287,8 @@ namespace ATR
             vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
             vkCmdBindIndexBuffer(commandBuffer, this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSets[this->currentFrameIndex], 0, nullptr);
+
             vkCmdDrawIndexed(commandBuffer, VkResourceManager::indices.size(), 1, 0, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
@@ -1182,6 +1311,25 @@ namespace ATR
 
         throw Exception("Failed to find suitable memory type", ExceptionType::UPDATE_MEMORY);
     }
+
+    void VkResourceManager::UpdateUniformBuffer(UInt currentFrameIndex)
+    {
+        static auto startTime = std::chrono::high_resolution_clock::now();
+
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        Float time = std::chrono::duration<Float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+        UniformBufferObject ubo;
+        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.view = glm::lookAt(glm::vec3(2.f, 2.f, 2.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 0.f, 1.f));
+        auto swapExtent = this->swapChainConfig.extent;
+        ubo.proj = glm::perspective(glm::radians(45.f), static_cast<float>(swapExtent.width) / static_cast<float>(swapExtent.height), 0.1f, 10.f);
+
+        ubo.proj[1][1] *= -1;       // Vulkan designates the origin of an image to be the upper-left vertex
+        
+        // TODO learn about "push constants" for improving efficiency
+        memcpy(this->uniformBufferMappedMemory[currentFrameIndex], &ubo, sizeof(ubo));
+    } 
 
     void VkResourceManager::RecreateSwapchain()
     {

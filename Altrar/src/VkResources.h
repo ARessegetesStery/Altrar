@@ -111,7 +111,7 @@ namespace ATR
         VkRenderPass renderPass;
         VkPipelineLayout pipelineLayout;                                // Specify Uniforms
         VkPipeline graphicsPipeline;
-        VkCommandPool graphicsCommandPool;
+        VkCommandPool graphicsCommandPool, transferCommandPool;
         std::vector<VkCommandBuffer> graphicsCommandBuffers;
         VkBuffer vertexBuffer;                                          // Actual buffer on device
         VkDeviceMemory vertexBufferMemory;

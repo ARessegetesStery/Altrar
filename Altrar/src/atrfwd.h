@@ -28,5 +28,8 @@
 // STL Descriptives
 #include <optional>
 
+// STL Tools
+#include <algorithm>
+
 // Vulkan 
 #include "vulkan/vulkan.h"

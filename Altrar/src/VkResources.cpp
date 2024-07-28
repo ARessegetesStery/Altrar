@@ -70,6 +70,7 @@ namespace ATR
         vkDestroyBuffer(this->device, this->vertexBuffer, nullptr);
         vkFreeMemory(this->device, this->vertexBufferMemory, nullptr);                      // This must be done after the buffer itself has been freed
         vkDestroyCommandPool(this->device, this->graphicsCommandPool, nullptr);             // Command buffers are automatically freed when we free the command pool
+        vkDestroyCommandPool(this->device, this->transferCommandPool, nullptr);
         vkDestroyPipeline(this->device, this->graphicsPipeline, nullptr);
         vkDestroyRenderPass(this->device, this->renderPass, nullptr);
         vkDestroyPipelineLayout(this->device, this->pipelineLayout, nullptr);
@@ -259,11 +260,12 @@ namespace ATR
             .oldSwapchain = VK_NULL_HANDLE
         };
 
-        if (this->queueIndices.indices[QueueFamilyIndices::GRAPHICS] != this->queueIndices.indices[QueueFamilyIndices::PRESENT])
+        std::vector<UInt> uniqueIndices = this->queueIndices.UniqueIndices();
+        if (!this->queueIndices.AllQueuesSame())
         {
             createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-            createInfo.queueFamilyIndexCount = 2;
-            createInfo.pQueueFamilyIndices = this->queueIndices.AllIndices().data();
+            createInfo.queueFamilyIndexCount = uniqueIndices.size();
+            createInfo.pQueueFamilyIndices = uniqueIndices.data();
         }
         else
             createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -276,7 +278,7 @@ namespace ATR
 
     void VkResourceManager::CreateImageViews()
     {
-        ATR_LOG("Retrieving image views from swapchain...")
+        ATR_LOG("Creating image views from swapchain...")
         swapchainImageViews.resize(swapchainImages.size());
         for (size_t i = 0; i != swapchainImages.size(); ++i)
         {
@@ -558,14 +560,27 @@ namespace ATR
     void VkResourceManager::CreateCommandPool()
     {
         ATR_LOG("Creating Command Pool...")
-        VkCommandPoolCreateInfo commandPoolInfo = {
+        VkCommandPoolCreateInfo graphicsCommandPoolInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
             .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
             .queueFamilyIndex = this->queueIndices.indices[QueueFamilyIndices::GRAPHICS].value()
         };
 
-        if (vkCreateCommandPool(this->device, &commandPoolInfo, nullptr, &this->graphicsCommandPool) != VK_SUCCESS)
-            throw Exception("Failed to create command pool", ExceptionType::INIT_PIPELINE);
+        if (vkCreateCommandPool(this->device, &graphicsCommandPoolInfo, nullptr, &this->graphicsCommandPool) != VK_SUCCESS)
+            throw Exception("Failed to create graphics command pool", ExceptionType::INIT_PIPELINE);
+
+        // if the graphics and transfer queue families are different, we also need a separate pool for transfer commands
+        if (this->queueIndices.SeparateTransferQueue())
+        {
+            VkCommandPoolCreateInfo transferCommandPoolInfo = {
+                .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+                .queueFamilyIndex = this->queueIndices.indices[QueueFamilyIndices::TRANSFER].value()
+            };
+
+            if (vkCreateCommandPool(this->device, &transferCommandPoolInfo, nullptr, &this->transferCommandPool) != VK_SUCCESS)
+                throw Exception("Failed to create transfer command pool", ExceptionType::INIT_PIPELINE);
+        }
     }
 
     void VkResourceManager::CreateVertexBuffer()
@@ -854,6 +869,11 @@ namespace ATR
             if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
                 this->queueIndices.indices[QueueFamilyIndices::GRAPHICS] = i;
 
+            // if there exists a queue family that exclusively supports transfer operations, use it
+            if (!(queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) &&
+                queueFamilies[i].queueFlags & VK_QUEUE_TRANSFER_BIT)
+                this->queueIndices.indices[QueueFamilyIndices::TRANSFER] = i;
+
             VkBool32 presentSupport = false;
             vkGetPhysicalDeviceSurfaceSupportKHR(device, i, this->surface, &presentSupport);
             if (presentSupport)
@@ -862,6 +882,10 @@ namespace ATR
             if (this->queueIndices.Complete())
                 break;
         }
+
+        // Fallback: if there does not exist a queue exclusively for transfer operations, use the graphics queue
+        if (this->queueIndices.indices[QueueFamilyIndices::TRANSFER] == std::nullopt)
+            this->queueIndices.indices[QueueFamilyIndices::TRANSFER] = this->queueIndices.indices[QueueFamilyIndices::GRAPHICS];
     }
 
     Bool VkResourceManager::CheckDeviceExtensionSupport(VkPhysicalDevice device)
@@ -996,7 +1020,7 @@ namespace ATR
     {
         VkCommandBufferAllocateInfo allocInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool = this->graphicsCommandPool,
+            .commandPool = this->transferCommandPool,
             .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
             .commandBufferCount = 1
         };
@@ -1009,7 +1033,9 @@ namespace ATR
             .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
         };
 
-        vkBeginCommandBuffer(copyCommandBuffer, &beginInfo);
+        // Recording command buffer for transfer queue
+        if (vkBeginCommandBuffer(copyCommandBuffer, &beginInfo) != VK_SUCCESS)
+            throw Exception("Failed to begin recording command buffer for transfer", ExceptionType::UPDATE_MEMORY);
             
             VkBufferCopy copyRegion = {
                 .srcOffset = 0,
@@ -1018,7 +1044,8 @@ namespace ATR
             };
             vkCmdCopyBuffer(copyCommandBuffer, src, dst, 1, &copyRegion);
 
-        vkEndCommandBuffer(copyCommandBuffer);
+        if (vkEndCommandBuffer(copyCommandBuffer) != VK_SUCCESS)
+            throw Exception("Failed to end recording command buffer for transfer", ExceptionType::UPDATE_MEMORY);
 
         VkSubmitInfo submitInfo = {
             .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -1026,10 +1053,10 @@ namespace ATR
             .pCommandBuffers = &copyCommandBuffer
         };
 
-        vkQueueSubmit(this->queues[QueueFamilyIndices::GRAPHICS], 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(this->queues[QueueFamilyIndices::GRAPHICS]);
+        vkQueueSubmit(this->queues[QueueFamilyIndices::TRANSFER], 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(this->queues[QueueFamilyIndices::TRANSFER]);
 
-        vkFreeCommandBuffers(this->device, this->graphicsCommandPool, 1, &copyCommandBuffer);
+        vkFreeCommandBuffers(this->device, this->transferCommandPool, 1, &copyCommandBuffer);
     }
 
     void VkResourceManager::RetrieveSwapChainImages()
@@ -1051,8 +1078,9 @@ namespace ATR
             .pInheritanceInfo = nullptr
         };
 
+        // Recording command for rendering
         if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
-            throw Exception("Failed to begin recording command buffer", ExceptionType::INIT_PIPELINE);
+            throw Exception("Failed to begin recording command buffer for rendering", ExceptionType::INIT_PIPELINE);
 
         VkRenderPassBeginInfo renderPassInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
@@ -1093,7 +1121,7 @@ namespace ATR
         vkCmdEndRenderPass(commandBuffer);
 
         if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
-            throw Exception("Failed to record command buffer", ExceptionType::INIT_PIPELINE);
+            throw Exception("Failed to end recording command buffer for rendering", ExceptionType::INIT_PIPELINE);
     }
 
     UInt VkResourceManager::FindMemoryType(UInt typeFilter, VkMemoryPropertyFlags properties)

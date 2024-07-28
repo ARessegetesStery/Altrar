@@ -5,6 +5,7 @@
 // Headers in src/Core should not include atrfwd.h, and should instead include the corresponding header file directly
 
 // Types
+// GLM is included here
 #include "ATRType.h"
 
 // OS Specifics and Outputs
@@ -18,6 +19,11 @@
 
 
 #endif 
+
+// STL Containers
+#include <vector>
+#include <array>
+#include <set>
 
 // STL Descriptives
 #include <optional>

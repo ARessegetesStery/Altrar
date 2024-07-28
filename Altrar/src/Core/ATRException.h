@@ -9,7 +9,7 @@ namespace ATR
         INIT_RENDERER,
         INIT_GLFW, INIT_VULKAN,
         INIT_SHADER, INIT_PIPELINE,
-        UPDATE_RENDER
+        UPDATE_RENDER, UPDATE_MEMORY
     };
 
     class Exception
@@ -41,6 +41,9 @@ namespace ATR
                 break;
             case ExceptionType::UPDATE_RENDER:
                 typeStr += "[UPDATE] (Render)";
+                break;
+            case ExceptionType::UPDATE_MEMORY:
+                typeStr += "[UPDATE] (Memory Allocation)";
                 break;
             }
 

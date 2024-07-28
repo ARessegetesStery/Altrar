@@ -32,6 +32,7 @@ namespace ATR
         this->CreateGraphicsPipeline();
         this->CreateFrameBuffers();
         this->CreateCommandPool();
+        this->CreateVertexBuffer();
         this->CreateCommandBuffer();
         this->CreateSyncGadgets();
     }
@@ -66,6 +67,8 @@ namespace ATR
             vkDestroyFence(this->device, fence, nullptr);
 
         // Clean up device-dependent resources
+        vkDestroyBuffer(this->device, this->vertexBuffer, nullptr);
+        vkFreeMemory(this->device, this->vertexBufferMemory, nullptr);                      // This must be done after the buffer itself has been freed
         vkDestroyCommandPool(this->device, this->graphicsCommandPool, nullptr);             // Command buffers are automatically freed when we free the command pool
         vkDestroyPipeline(this->device, this->graphicsPipeline, nullptr);
         vkDestroyRenderPass(this->device, this->renderPass, nullptr);
@@ -401,8 +404,10 @@ namespace ATR
         ATR_LOG_SUB("Configuring Input Layouts...")
         VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-            .vertexBindingDescriptionCount = 0,
-            .vertexAttributeDescriptionCount = 0
+            .vertexBindingDescriptionCount = 1,
+            .pVertexBindingDescriptions = &Vertex::bindingDescription,
+            .vertexAttributeDescriptionCount = Vertex::attributeDescriptions.size(),
+            .pVertexAttributeDescriptions = Vertex::attributeDescriptions.data(),
         };
 
         // Input Assembly
@@ -561,6 +566,45 @@ namespace ATR
 
         if (vkCreateCommandPool(this->device, &commandPoolInfo, nullptr, &this->graphicsCommandPool) != VK_SUCCESS)
             throw Exception("Failed to create command pool", ExceptionType::INIT_PIPELINE);
+    }
+
+    void VkResourceManager::CreateVertexBuffer()
+    {
+        // TODO make this more flexible
+        ATR_LOG("Creating Vertex Buffer...")
+        VkBufferCreateInfo bufferInfo = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size = sizeof(vertices[0]) * vertices.size(),
+            .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            .sharingMode = VK_SHARING_MODE_EXCLUSIVE
+        };
+
+        if (vkCreateBuffer(this->device, &bufferInfo, nullptr, &this->vertexBuffer) != VK_SUCCESS)
+            throw Exception("Failed to create vertex buffer", ExceptionType::INIT_PIPELINE);
+
+        VkMemoryRequirements memRequirements;
+        vkGetBufferMemoryRequirements(this->device, this->vertexBuffer, &memRequirements);
+
+        VkMemoryAllocateInfo allocInfo = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            .allocationSize = memRequirements.size,
+            .memoryTypeIndex = this->FindMemoryType(
+                memRequirements.memoryTypeBits, 
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+                // Host coherency implies that changes to the memory on the host will NOTIFY (but not necessarily immediately visible to) the device
+                // Device visibility depends on its actual memory model and is ensured by the driver
+            )
+        };
+
+        if (vkAllocateMemory(this->device, &allocInfo, nullptr, &this->vertexBufferMemory) != VK_SUCCESS)
+            throw Exception("Failed to allocate vertex buffer memory", ExceptionType::INIT_PIPELINE);
+
+        vkBindBufferMemory(this->device, this->vertexBuffer, this->vertexBufferMemory, 0);
+
+        void* data;
+        vkMapMemory(this->device, this->vertexBufferMemory, 0, bufferInfo.size, 0, &data);
+            memcpy(data, VkResourceManager::vertices.data(), (size_t)bufferInfo.size);
+        vkUnmapMemory(this->device, this->vertexBufferMemory);
     }
 
     void VkResourceManager::CreateCommandBuffer()
@@ -972,12 +1016,31 @@ namespace ATR
             scissor.extent = this->swapChainConfig.extent;
             vkCmdSetScissor(this->graphicsCommandBuffers[this->currentFrameIndex], 0, 1, &scissor);
 
-            vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+            VkBuffer vertexBuffers[] = { this->vertexBuffer };
+            VkDeviceSize offsets[] = { 0 };
+            vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
+            vkCmdDraw(commandBuffer, static_cast<UInt>(VkResourceManager::vertices.size()), 1, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
 
         if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
             throw Exception("Failed to record command buffer", ExceptionType::INIT_PIPELINE);
+    }
+
+    UInt VkResourceManager::FindMemoryType(UInt typeFilter, VkMemoryPropertyFlags properties)
+    {
+        VkPhysicalDeviceMemoryProperties memProperties;
+        vkGetPhysicalDeviceMemoryProperties(this->physicalDevice, &memProperties);
+
+        for (UInt i = 0; i != memProperties.memoryTypeCount; ++i)
+            if (
+                typeFilter & (1 << i) &&                                                    // Suitable for the buffer
+                (memProperties.memoryTypes[i].propertyFlags & properties) == properties     // Suitable for data
+            )
+                return i;
+
+        throw Exception("Failed to find suitable memory type", ExceptionType::UPDATE_MEMORY);
     }
 
     void VkResourceManager::RecreateSwapchain()

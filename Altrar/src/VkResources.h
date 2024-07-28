@@ -3,6 +3,7 @@
 
 #include "Loader/Config/Config.h"
 
+#include "Geometry/Geometry.h"
 #include "VkInfos/VkInfos.h"
 
 namespace ATR
@@ -33,6 +34,7 @@ namespace ATR
         void CreateGraphicsPipeline();
         void CreateFrameBuffers();
         void CreateCommandPool();
+        void CreateVertexBuffer();
         void CreateCommandBuffer();
         void CreateSyncGadgets();
 
@@ -72,6 +74,7 @@ namespace ATR
         void ConfigureSwapChain(SwapChainSupportDetails support);
         void RetrieveSwapChainImages();
         void RecordCommandBuffer(VkCommandBuffer commandBuffer, UInt imageIndex);
+        UInt FindMemoryType(UInt typeFilter, VkMemoryPropertyFlags properties);
 
         std::vector<char> ReadShaderCode(const char* path);
         VkShaderModule CreateShaderModule(const std::vector<char>& code);
@@ -106,6 +109,8 @@ namespace ATR
         VkPipeline graphicsPipeline;
         VkCommandPool graphicsCommandPool;
         std::vector<VkCommandBuffer> graphicsCommandBuffers;
+        VkBuffer vertexBuffer;
+        VkDeviceMemory vertexBufferMemory;
 
         // Synchronization gadgets
         std::vector<VkSemaphore> imageAvailableSemaphores;
@@ -128,6 +133,7 @@ namespace ATR
         Bool frameBufferResized = false;
 
         // Static (global) functions
+        // TODO may want to have a separate class & files to handle callbacks
         static void FramebufferResizeCallback(GLFWwindow* window, int width, int height);
 
         // Default Vulkan Configs
@@ -145,6 +151,13 @@ namespace ATR
         static inline constexpr Float defaultQueuePriority = 0.2f;
         static inline constexpr VkClearValue defaultClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
         static inline constexpr UInt maxFramesInFlight = 2;
+
+        // Temporary Global Variables
+        static inline const std::vector<Vertex> vertices = {
+            {{ 0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
+            {{ 0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}},
+            {{-0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}}
+        };
     };
 
 }

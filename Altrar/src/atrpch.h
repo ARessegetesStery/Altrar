@@ -11,11 +11,6 @@
 // Forward Constructions
 #include "atrfwd.h"
 
-// STL Containers
-#include <vector>
-#include <array>
-#include <set>
-
 // Misc STL Defs
 #include <limits>
 

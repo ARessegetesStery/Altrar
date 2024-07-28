@@ -7,7 +7,7 @@ namespace ATR
     struct Vertex
     {
     public:
-        Vec2 pos;
+        Vec3 pos;
         Vec3 Color;
 
         static VkVertexInputBindingDescription bindingDescription;

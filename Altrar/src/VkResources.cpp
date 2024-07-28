@@ -38,6 +38,7 @@ namespace ATR
         this->CreateCommandPool();
 
         // Setup Buffers and Syncing
+        this->CreateDepthBuffer();
         this->CreateTextureImage();
         this->CreateVertexBuffer();
         this->CreateIndexBuffer();
@@ -622,6 +623,11 @@ namespace ATR
             if (vkCreateCommandPool(this->device, &transferCommandPoolInfo, nullptr, &this->transferCommandPool) != VK_SUCCESS)
                 throw Exception("Failed to create transfer command pool", ExceptionType::INIT_PIPELINE);
         }
+    }
+
+    void VkResourceManager::CreateDepthBuffer()
+    {
+
     }
 
     void VkResourceManager::CreateTextureImage()

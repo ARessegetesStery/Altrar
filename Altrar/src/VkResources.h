@@ -36,6 +36,7 @@ namespace ATR
         void CreateGraphicsPipeline();
         void CreateFrameBuffers();
         void CreateCommandPool();
+        void CreateDepthBuffer();
         void CreateTextureImage();
         void CreateVertexBuffer();
         void CreateIndexBuffer();
@@ -182,14 +183,20 @@ namespace ATR
 
         // Temporary Global Variables
         static inline const std::vector<Vertex> vertices = {
-            {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-            {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-            {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-            {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}},
+            {{-0.5f, -0.5f, 0.f}, {1.0f, 0.0f, 0.0f}},
+            {{0.5f, -0.5f, 0.f}, {0.0f, 1.0f, 0.0f}},
+            {{0.5f, 0.5f, 0.f}, {0.0f, 0.0f, 1.0f}},
+            {{-0.5f, 0.5f, 0.f}, {1.0f, 1.0f, 1.0f}},
+
+            {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+            {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+            {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}},
+            {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}}
         };
 
         static inline const std::vector<UInt> indices = {
-            0, 1, 2, 2, 3, 0
+            0, 1, 2, 2, 3, 0,
+            4, 5, 6, 6, 7, 4
         };
     };
 

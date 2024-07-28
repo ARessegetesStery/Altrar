@@ -74,6 +74,7 @@ namespace ATR
         void QuerySwapChainSupport(VkPhysicalDevice device);
         void ConfigureSwapChain(SwapChainSupportDetails support);
         void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+        void CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
 
         std::vector<char> ReadShaderCode(const char* path);
         VkShaderModule CreateShaderModule(const std::vector<char>& code);
@@ -112,7 +113,7 @@ namespace ATR
         VkPipeline graphicsPipeline;
         VkCommandPool graphicsCommandPool;
         std::vector<VkCommandBuffer> graphicsCommandBuffers;
-        VkBuffer vertexBuffer;
+        VkBuffer vertexBuffer;                                          // Actual buffer on device
         VkDeviceMemory vertexBufferMemory;
 
         // Synchronization gadgets

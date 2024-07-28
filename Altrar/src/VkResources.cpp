@@ -572,22 +572,38 @@ namespace ATR
     {
         // TODO make this more flexible
         ATR_LOG("Creating Vertex Buffer...")
-        
         VkDeviceSize bufferSize = sizeof(VkResourceManager::vertices[0]) * VkResourceManager::vertices.size();
+
+        VkBuffer stagingBuffer;                         // Buffer on CPU, temporary, host-visible
+        VkDeviceMemory stagingBufferMemory;
+
         this->CreateBuffer(
             bufferSize, 
-            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, 
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,           // Will be transferred to the actual vertex buffer on device
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
             // Host coherency implies that changes to the memory on the host will NOTIFY (but not necessarily immediately visible to) the device
             // Device visibility depends on its actual memory model and is ensured by the driver
-            this->vertexBuffer, 
-            this->vertexBufferMemory
+            stagingBuffer, 
+            stagingBufferMemory
         );
 
         void* data;
-        vkMapMemory(this->device, this->vertexBufferMemory, 0, bufferSize, 0, &data);
+        vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
             memcpy(data, VkResourceManager::vertices.data(), static_cast<size_t>(bufferSize));
-        vkUnmapMemory(this->device, this->vertexBufferMemory);
+        vkUnmapMemory(this->device, stagingBufferMemory);
+
+        this->CreateBuffer(
+            bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,       // Will receive transfer from the host, and used as vertex buffer
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,                                        // Most suitable (performative) for device local access
+            this->vertexBuffer,
+            this->vertexBufferMemory
+        );
+
+        this->CopyBuffer(stagingBuffer, this->vertexBuffer, bufferSize);
+
+        vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+        vkFreeMemory(this->device, stagingBufferMemory, nullptr);
     }
 
     void VkResourceManager::CreateCommandBuffer()
@@ -968,10 +984,52 @@ namespace ATR
             .memoryTypeIndex = this->FindMemoryType(memRequirements.memoryTypeBits, properties)
         };
 
+        // TODO implement a custom allocator for handling multiple memory allocation, with different offsets
+        //   refer to https://vulkan-tutorial.com/Vertex_buffers/Staging_buffer#page_Conclusion
         if (vkAllocateMemory(this->device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
             throw Exception("Failed to allocate buffer memory", ExceptionType::INIT_PIPELINE);
 
         vkBindBufferMemory(this->device, buffer, bufferMemory, 0);
+    }
+
+    void VkResourceManager::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
+    {
+        VkCommandBufferAllocateInfo allocInfo = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+            .commandPool = this->graphicsCommandPool,
+            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+            .commandBufferCount = 1
+        };
+
+        VkCommandBuffer copyCommandBuffer;
+        vkAllocateCommandBuffers(this->device, &allocInfo, &copyCommandBuffer);
+
+        VkCommandBufferBeginInfo beginInfo = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT
+        };
+
+        vkBeginCommandBuffer(copyCommandBuffer, &beginInfo);
+            
+            VkBufferCopy copyRegion = {
+                .srcOffset = 0,
+                .dstOffset = 0,
+                .size = size
+            };
+            vkCmdCopyBuffer(copyCommandBuffer, src, dst, 1, &copyRegion);
+
+        vkEndCommandBuffer(copyCommandBuffer);
+
+        VkSubmitInfo submitInfo = {
+            .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+            .commandBufferCount = 1,
+            .pCommandBuffers = &copyCommandBuffer
+        };
+
+        vkQueueSubmit(this->queues[QueueFamilyIndices::GRAPHICS], 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(this->queues[QueueFamilyIndices::GRAPHICS]);
+
+        vkFreeCommandBuffers(this->device, this->graphicsCommandPool, 1, &copyCommandBuffer);
     }
 
     void VkResourceManager::RetrieveSwapChainImages()

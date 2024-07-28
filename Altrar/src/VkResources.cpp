@@ -38,6 +38,7 @@ namespace ATR
         this->CreateCommandPool();
 
         // Setup Buffers and Syncing
+        this->CreateTextureImage();
         this->CreateVertexBuffer();
         this->CreateIndexBuffer();
         this->CreateUniformBuffer();
@@ -623,6 +624,11 @@ namespace ATR
         }
     }
 
+    void VkResourceManager::CreateTextureImage()
+    {
+        // TODO
+    }
+
     void VkResourceManager::CreateVertexBuffer()
     {
         // TODO make this more flexible
@@ -632,15 +638,7 @@ namespace ATR
         VkBuffer stagingBuffer;                         // Buffer on CPU, temporary, host-visible
         VkDeviceMemory stagingBufferMemory;
 
-        this->CreateBuffer(
-            bufferSize, 
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,           // Will be transferred to the actual vertex buffer on device
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-            // Host coherency implies that changes to the memory on the host will NOTIFY (but not necessarily immediately visible to) the device
-            // Device visibility depends on its actual memory model and is ensured by the driver
-            stagingBuffer, 
-            stagingBufferMemory
-        );
+        this->CreateStagingBuffer(bufferSize, stagingBuffer, stagingBufferMemory);
 
         void* data;
         vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
@@ -669,13 +667,7 @@ namespace ATR
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingBufferMemory;
 
-        this->CreateBuffer(
-            bufferSize,
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            stagingBuffer,
-            stagingBufferMemory
-        );
+        this->CreateStagingBuffer(bufferSize, stagingBuffer, stagingBufferMemory);
 
         void* data;
         vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
@@ -739,7 +731,7 @@ namespace ATR
         };
 
         if (vkCreateDescriptorPool(this->device, &poolInfo, nullptr, &this->descriptorPool) != VK_SUCCESS)
-            throw Exception("Failed to create descriptor pool", ExceptionType::INIT_PIPELINE);
+            throw Exception("Failed to create descriptor pool", ExceptionType::INIT_BUFFER);
     }
 
     void VkResourceManager::CreateDescriptorSets()
@@ -757,7 +749,7 @@ namespace ATR
 
         this->descriptorSets.resize(VkResourceManager::maxFramesInFlight);
         if (vkAllocateDescriptorSets(this->device, &allocInfo, this->descriptorSets.data()) != VK_SUCCESS)
-            throw Exception("Failed to allocate descriptor sets", ExceptionType::INIT_PIPELINE);
+            throw Exception("Failed to allocate descriptor sets", ExceptionType::INIT_BUFFER);
 
         // Now fill in the descriptor sets
         for (UInt i = 0; i != VkResourceManager::maxFramesInFlight; ++i)
@@ -794,7 +786,7 @@ namespace ATR
         };
 
         if (vkAllocateCommandBuffers(this->device, &commandBufferInfo, graphicsCommandBuffers.data()) != VK_SUCCESS)
-            throw Exception("Failed to allocate command buffers", ExceptionType::INIT_PIPELINE);
+            throw Exception("Failed to allocate command buffers", ExceptionType::INIT_BUFFER);
     }
 
     void VkResourceManager::CreateSyncGadgets()
@@ -1176,9 +1168,22 @@ namespace ATR
         //   Also create index/vertex buffers in a single allocation
         //   refer to https://developer.nvidia.com/vulkan-memory-management
         if (vkAllocateMemory(this->device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
-            throw Exception("Failed to allocate buffer memory", ExceptionType::INIT_PIPELINE);
+            throw Exception("Failed to allocate buffer memory", ExceptionType::INIT_BUFFER);
 
         vkBindBufferMemory(this->device, buffer, bufferMemory, 0);
+    }
+
+    void VkResourceManager::CreateStagingBuffer(VkDeviceSize size, VkBuffer& stagingBuffer, VkDeviceMemory& stagingBufferMemory)
+    {
+        this->CreateBuffer(
+            size,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,           // Will be transferred to the actual vertex buffer on device
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            // Host coherency implies that changes to the memory on the host will NOTIFY (but not necessarily immediately visible to) the device
+            // Device visibility depends on its actual memory model and is ensured by the driver
+            stagingBuffer,
+            stagingBufferMemory
+        );
     }
 
     void VkResourceManager::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)

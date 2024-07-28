@@ -8,7 +8,7 @@ namespace ATR
     {
         INIT_RENDERER,
         INIT_GLFW, INIT_VULKAN,
-        INIT_SHADER, INIT_PIPELINE,
+        INIT_SHADER, INIT_PIPELINE, INIT_BUFFER,
         UPDATE_RENDER, UPDATE_MEMORY
     };
 
@@ -38,6 +38,9 @@ namespace ATR
                 break;
             case ExceptionType::INIT_PIPELINE:
                 typeStr += "[INIT] (Pipeline)";
+                break;
+            case ExceptionType::INIT_BUFFER:
+                typeStr += "[INIT] (Buffer)";
                 break;
             case ExceptionType::UPDATE_RENDER:
                 typeStr += "[UPDATE] (Render)";

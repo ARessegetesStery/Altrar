@@ -35,6 +35,7 @@ namespace ATR
         void CreateFrameBuffers();
         void CreateCommandPool();
         void CreateVertexBuffer();
+        void CreateIndexBuffer();
         void CreateCommandBuffer();
         void CreateSyncGadgets();
 
@@ -113,8 +114,8 @@ namespace ATR
         VkPipeline graphicsPipeline;
         VkCommandPool graphicsCommandPool, transferCommandPool;
         std::vector<VkCommandBuffer> graphicsCommandBuffers;
-        VkBuffer vertexBuffer;                                          // Actual buffer on device
-        VkDeviceMemory vertexBufferMemory;
+        VkBuffer vertexBuffer, indexBuffer;                             // Actual buffer on device
+        VkDeviceMemory vertexBufferMemory, indexBufferMemory;
 
         // Synchronization gadgets
         std::vector<VkSemaphore> imageAvailableSemaphores;
@@ -158,9 +159,14 @@ namespace ATR
 
         // Temporary Global Variables
         static inline const std::vector<Vertex> vertices = {
-            {{ 0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
-            {{ 0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}},
-            {{-0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}}
+            {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+            {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+            {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+            {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}},
+        };
+
+        static inline const std::vector<UInt> indices = {
+            0, 1, 2, 2, 3, 0
         };
     };
 

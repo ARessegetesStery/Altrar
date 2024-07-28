@@ -33,6 +33,7 @@ namespace ATR
         this->CreateFrameBuffers();
         this->CreateCommandPool();
         this->CreateVertexBuffer();
+        this->CreateIndexBuffer();
         this->CreateCommandBuffer();
         this->CreateSyncGadgets();
     }
@@ -69,12 +70,17 @@ namespace ATR
         // Clean up device-dependent resources
         vkDestroyBuffer(this->device, this->vertexBuffer, nullptr);
         vkFreeMemory(this->device, this->vertexBufferMemory, nullptr);                      // This must be done after the buffer itself has been freed
+        vkDestroyBuffer(this->device, this->indexBuffer, nullptr);
+        vkFreeMemory(this->device, this->indexBufferMemory, nullptr);
+
         vkDestroyCommandPool(this->device, this->graphicsCommandPool, nullptr);             // Command buffers are automatically freed when we free the command pool
         vkDestroyCommandPool(this->device, this->transferCommandPool, nullptr);
+
         vkDestroyPipeline(this->device, this->graphicsPipeline, nullptr);
         vkDestroyRenderPass(this->device, this->renderPass, nullptr);
         vkDestroyPipelineLayout(this->device, this->pipelineLayout, nullptr);
         this->CleanUpSwapchain();
+
         vkDestroyDevice(this->device, nullptr);
         
         // Clean up instance-dependent resources
@@ -621,6 +627,41 @@ namespace ATR
         vkFreeMemory(this->device, stagingBufferMemory, nullptr);
     }
 
+    void VkResourceManager::CreateIndexBuffer()
+    {
+        ATR_LOG("Creating Index Buffer...")
+        VkDeviceSize bufferSize = sizeof(VkResourceManager::indices[0]) * VkResourceManager::indices.size();
+
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+
+        this->CreateBuffer(
+            bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            stagingBuffer,
+            stagingBufferMemory
+        );
+
+        void* data;
+        vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+            memcpy(data, VkResourceManager::indices.data(), static_cast<size_t>(bufferSize));
+        vkUnmapMemory(this->device, stagingBufferMemory);
+
+        this->CreateBuffer(
+            bufferSize,
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            this->indexBuffer,
+            this->indexBufferMemory
+        );
+
+        this->CopyBuffer(stagingBuffer, this->indexBuffer, bufferSize);
+
+        vkDestroyBuffer(this->device, stagingBuffer, nullptr);
+        vkFreeMemory(this->device, stagingBufferMemory, nullptr);
+    }
+
     void VkResourceManager::CreateCommandBuffer()
     {
         ATR_LOG("Creating Command Buffer...")
@@ -1010,6 +1051,8 @@ namespace ATR
 
         // TODO implement a custom allocator for handling multiple memory allocation, with different offsets
         //   refer to https://vulkan-tutorial.com/Vertex_buffers/Staging_buffer#page_Conclusion
+        //   Also create index/vertex buffers in a single allocation
+        //   refer to https://developer.nvidia.com/vulkan-memory-management
         if (vkAllocateMemory(this->device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
             throw Exception("Failed to allocate buffer memory", ExceptionType::INIT_PIPELINE);
 
@@ -1115,8 +1158,9 @@ namespace ATR
             VkBuffer vertexBuffers[] = { this->vertexBuffer };
             VkDeviceSize offsets[] = { 0 };
             vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+            vkCmdBindIndexBuffer(commandBuffer, this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-            vkCmdDraw(commandBuffer, static_cast<UInt>(VkResourceManager::vertices.size()), 1, 0, 0);
+            vkCmdDrawIndexed(commandBuffer, VkResourceManager::indices.size(), 1, 0, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
 

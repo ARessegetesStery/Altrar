@@ -29,18 +29,20 @@ namespace ATR
         void CreateSurface();
         void SelectPhysicalDevice();
         void CreateLogicalDevice();
+
         void CreateSwapchain();
         void CreateImageViews();
         void CreateRenderPass();
         void CreateDescriptorSetLayout();
         void CreateGraphicsPipeline();
-        void CreateFrameBuffers();
         void CreateCommandPool();
+
         void CreateDepthBuffer();
         void CreateTextureImage();
         void CreateVertexBuffer();
         void CreateIndexBuffer();
         void CreateUniformBuffer();
+        void CreateFrameBuffers();
         void CreateDescriptorPool();
         void CreateDescriptorSets();
         void CreateCommandBuffer();
@@ -84,6 +86,12 @@ namespace ATR
         void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
         void CreateStagingBuffer(VkDeviceSize size, VkBuffer& stagingBuffer, VkDeviceMemory& stagingBufferMemory);
         void CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
+
+        void CreateImage(UInt width, UInt height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+        VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+        VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+        inline VkFormat FindDepthFormat();
+        inline bool HasStencilComponent(VkFormat format);
 
         std::vector<char> ReadShaderCode(const char* path);
         VkShaderModule CreateShaderModule(const std::vector<char>& code);
@@ -134,6 +142,10 @@ namespace ATR
         VkBuffer vertexBuffer, indexBuffer;                             // Actual buffer on device
         VkDeviceMemory vertexBufferMemory, indexBufferMemory;
 
+        VkImage depthImage;
+        VkDeviceMemory depthImageMemory;
+        VkImageView depthImageView;
+
         std::vector<VkBuffer> uniformBuffers;
         std::vector<VkDeviceMemory> uniformBuffersMemory;
         std::vector<void*> uniformBufferMappedMemory;
@@ -178,7 +190,8 @@ namespace ATR
             .pUserData = nullptr
         };
         static inline constexpr Float defaultQueuePriority = 0.2f;
-        static inline constexpr VkClearValue defaultClearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+        static inline constexpr VkClearValue defaultClearValue = { 0.0f, 0.0f, 0.0f, 1.0f };
+        static inline constexpr VkClearValue defaultDepthClearValue = {1.f, 0.f};
         static inline constexpr UInt maxFramesInFlight = 2;
 
         // Temporary Global Variables

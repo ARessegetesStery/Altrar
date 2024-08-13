@@ -34,7 +34,6 @@ namespace ATR
         this->CreateRenderPass();
         this->CreateDescriptorSetLayout();
         this->CreateGraphicsPipeline();
-        this->CreateFrameBuffers();
         this->CreateCommandPool();
 
         // Setup Buffers and Syncing
@@ -43,6 +42,7 @@ namespace ATR
         this->CreateVertexBuffer();
         this->CreateIndexBuffer();
         this->CreateUniformBuffer();
+        this->CreateFrameBuffers();
         this->CreateDescriptorPool();
         this->CreateDescriptorSets();
         this->CreateCommandBuffer();
@@ -303,6 +303,7 @@ namespace ATR
         swapchainImageViews.resize(swapchainImages.size());
         for (size_t i = 0; i != swapchainImages.size(); ++i)
         {
+            // TODO replace this with CreateImageView
             VkImageViewCreateInfo createInfo = {
                 .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                 .image = swapchainImages[i],
@@ -350,25 +351,44 @@ namespace ATR
             .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
         };
 
-        VkSubpassDescription subpass = {
-            .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-            .colorAttachmentCount = 1,
-            .pColorAttachments = &colorAttachmentRef
+        VkAttachmentDescription depthAttachment = {
+            .format = this->FindDepthFormat(),
+            .samples = VK_SAMPLE_COUNT_1_BIT,
+            .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+            .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+            .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+        };
+
+        VkAttachmentReference depthAttachmentRef = {
+            .attachment = 1,
+            .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
         };
 
         VkSubpassDependency dependency = {
             .srcSubpass = VK_SUBPASS_EXTERNAL,
             .dstSubpass = 0,
-            .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+            .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
             .srcAccessMask = 0,
-            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
         };
+
+        VkSubpassDescription subpass = {
+            .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+            .colorAttachmentCount = 1,
+            .pColorAttachments = &colorAttachmentRef,
+            .pDepthStencilAttachment = &depthAttachmentRef
+        };
+
+        std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
 
         VkRenderPassCreateInfo renderPass = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-            .attachmentCount = 1,
-            .pAttachments = &colorAttachment,
+            .attachmentCount = static_cast<UInt>(attachments.size()),
+            .pAttachments = attachments.data(),
             .subpassCount = 1,
             .pSubpasses = &subpass,
             .dependencyCount = 1,
@@ -510,6 +530,19 @@ namespace ATR
             .alphaToOneEnable = VK_FALSE
         };
 
+        VkPipelineDepthStencilStateCreateInfo depthStencilInfo = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+            .depthTestEnable = VK_TRUE,
+            .depthWriteEnable = VK_TRUE,
+            .depthCompareOp = VK_COMPARE_OP_LESS,
+            .depthBoundsTestEnable = VK_FALSE,
+            .stencilTestEnable = VK_FALSE,
+            .front = {},
+            .back = {},
+            .minDepthBounds = 0.0f,
+            .maxDepthBounds = 1.0f,
+        };
+
         // Color Blending per buffer
         VkPipelineColorBlendAttachmentState colorBlendAttachment = {
             // Enable Alpha Blending
@@ -555,6 +588,7 @@ namespace ATR
             .pViewportState = &viewportStateInfo,
             .pRasterizationState = &rasterizerInfo,
             .pMultisampleState = &multisamplingInfo,
+            .pDepthStencilState = &depthStencilInfo,
             .pColorBlendState = &colorBlendingInfo,
             .pDynamicState = &dynamicStateCreateInfo,
             .layout = this->pipelineLayout,
@@ -582,13 +616,13 @@ namespace ATR
 
         for (size_t i = 0; i != this->swapchainImageViews.size(); ++i)
         {
-            VkImageView attachments[] = { this->swapchainImageViews[i] };
+            std::array<VkImageView, 2> attachments = { this->swapchainImageViews[i], this->depthImageView };
 
             VkFramebufferCreateInfo framebufferInfo = {
                 .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
                 .renderPass = this->renderPass,
-                .attachmentCount = 1,
-                .pAttachments = attachments,
+                .attachmentCount = static_cast<UInt>(attachments.size()),
+                .pAttachments = attachments.data(),
                 .width = this->swapChainConfig.extent.width,
                 .height = this->swapChainConfig.extent.height,
                 .layers = 1
@@ -627,7 +661,18 @@ namespace ATR
 
     void VkResourceManager::CreateDepthBuffer()
     {
-
+        VkFormat depthFormat = this->FindDepthFormat();
+        this->CreateImage(
+            this->swapChainConfig.extent.width,
+            this->swapChainConfig.extent.height,
+            depthFormat,
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            this->depthImage,
+            this->depthImageMemory
+        );
+        this->depthImageView = this->CreateImageView(this->depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
     }
 
     void VkResourceManager::CreateTextureImage()
@@ -1049,6 +1094,80 @@ namespace ATR
             this->queueIndices.indices[QueueFamilyIndices::TRANSFER] = this->queueIndices.indices[QueueFamilyIndices::GRAPHICS];
     }
 
+    // TODO replace repetitions of this code block
+    void VkResourceManager::CreateImage(UInt width, UInt height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
+    {
+        VkImageCreateInfo imageInfo{};
+        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.imageType = VK_IMAGE_TYPE_2D;
+        imageInfo.extent.width = width;
+        imageInfo.extent.height = height;
+        imageInfo.extent.depth = 1;
+        imageInfo.mipLevels = 1;
+        imageInfo.arrayLayers = 1;
+        imageInfo.format = format;
+        imageInfo.tiling = tiling;
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageInfo.usage = usage;
+        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create image!");
+        }
+
+        VkMemoryRequirements memRequirements;
+        vkGetImageMemoryRequirements(device, image, &memRequirements);
+
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = memRequirements.size;
+        allocInfo.memoryTypeIndex = this->FindMemoryType(memRequirements.memoryTypeBits, properties);
+
+        if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
+            throw std::runtime_error("failed to allocate image memory!");
+        }
+
+        vkBindImageMemory(device, image, imageMemory, 0);
+    }
+
+    VkImageView VkResourceManager::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
+    {
+        VkImageViewCreateInfo viewInfo{};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.image = image;
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.format = format;
+        viewInfo.subresourceRange.aspectMask = aspectFlags;
+        viewInfo.subresourceRange.baseMipLevel = 0;
+        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.baseArrayLayer = 0;
+        viewInfo.subresourceRange.layerCount = 1;
+
+        VkImageView imageView;
+        if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create texture image view!");
+        }
+
+        return imageView;
+    }
+
+    VkFormat VkResourceManager::FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+    {
+        for (VkFormat format : candidates)
+        {
+            VkFormatProperties props;
+            vkGetPhysicalDeviceFormatProperties(this->physicalDevice, format, &props);
+
+            if (tiling == VK_IMAGE_TILING_LINEAR && (features & props.linearTilingFeatures) == features)
+                return format;
+            else if (tiling == VK_IMAGE_TILING_OPTIMAL && (features & props.optimalTilingFeatures) == features)
+                return format;
+        }
+
+        throw Exception("Failed to find supported format", ExceptionType::INIT_PIPELINE);
+    }
+
     Bool VkResourceManager::CheckDeviceExtensionSupport(VkPhysicalDevice device)
     {
         UInt deviceExtensionCount = 0;
@@ -1246,6 +1365,20 @@ namespace ATR
         ATR_PRINT_VERBOSE("Retrieved " + std::to_string(imageCount) + " images in total in the swapchain.")
     }
 
+    inline VkFormat VkResourceManager::FindDepthFormat()
+    {
+        return FindSupportedFormat(
+            { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+        );
+    }
+
+    inline bool VkResourceManager::HasStencilComponent(VkFormat format)
+    {
+        return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+    }
+
     void VkResourceManager::RecordCommandBuffer(VkCommandBuffer commandBuffer, UInt imageIndex)
     {
         VkCommandBufferBeginInfo beginInfo = {
@@ -1258,6 +1391,8 @@ namespace ATR
         if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
             throw Exception("Failed to begin recording command buffer for rendering", ExceptionType::INIT_PIPELINE);
 
+        std::array<VkClearValue, 2> clearValues = { VkResourceManager::defaultClearValue, VkResourceManager::defaultDepthClearValue };
+
         VkRenderPassBeginInfo renderPassInfo = {
             .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
             .renderPass = this->renderPass,
@@ -1266,8 +1401,8 @@ namespace ATR
                 .offset = { 0, 0 },
                 .extent = this->swapChainConfig.extent
             },
-            .clearValueCount = 1,
-            .pClearValues = &VkResourceManager::defaultClearColor
+            .clearValueCount = static_cast<UInt>(clearValues.size()),
+            .pClearValues = clearValues.data()
         };
 
         vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);

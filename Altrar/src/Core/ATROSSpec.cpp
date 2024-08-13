@@ -8,12 +8,17 @@ namespace ATR
 {
 
 #if defined _WIN32
+
+    namespace ATR_WINAPI
+    {
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+    }
 
 	void OS_ChangeConsoleColor(unsigned int color)
     {
-        HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-        SetConsoleTextAttribute(hConsole, color);
+        ATR_WINAPI::HANDLE hConsole = ATR_WINAPI::GetStdHandle(-11);            // -11 = STD_OUTPUT_HANDLE
+        ATR_WINAPI::SetConsoleTextAttribute(hConsole, color);
     }
 
 #endif

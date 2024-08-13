@@ -109,6 +109,7 @@ namespace ATR
 
         // Proxy
         inline void AddTriangle(std::array<Vertex, 3> vertices) { this->mesh.AddTriangle(vertices); this->meshStale = true; }
+        inline void UpdateMesh(const Mesh& mesh) { this->mesh.UpdateMesh(mesh); this->meshStale = true; }
 
     private:
         // Configs

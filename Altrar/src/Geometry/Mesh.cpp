@@ -22,4 +22,12 @@ namespace ATR
             this->indices.push_back(newIndex);
         }
     }
+
+    void Mesh::UpdateMesh(const Mesh& mesh)
+    {
+        this->Clear();
+
+        this->indices = mesh.GetIndices();
+        this->vertices = mesh.GetVertices();
+    }
 }

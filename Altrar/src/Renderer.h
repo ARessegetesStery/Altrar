@@ -25,7 +25,8 @@ namespace ATR
         void UpdateStats();
 
         // Proxy: modify mesh
-        void AddTriangle(std::array<Vertex, 3> vertices) { this->vkResources.AddTriangle(vertices); }
+        inline void AddTriangle(std::array<Vertex, 3> vertices) { this->vkResources.AddTriangle(vertices); }
+        void UpdateMesh(const Mesh& mesh);
 
     private:
         Config config;

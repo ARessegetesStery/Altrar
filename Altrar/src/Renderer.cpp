@@ -61,4 +61,9 @@ namespace ATR
             << this->vkResources.GetUpdateInfo())
         ++frameCount;
     }
+
+    void Renderer::UpdateMesh(const Mesh& mesh)
+    {
+         this->vkResources.UpdateMesh(mesh);
+    }
 }

@@ -18,6 +18,8 @@ namespace ATR
 
     void VkResourceManager::Init()
     {
+        this->InitParams();
+
         // Setup GLFW Window
         this->CreateWindow();
 
@@ -105,6 +107,15 @@ namespace ATR
         // Clean up GLFW resources
         glfwDestroyWindow(this->window);
         glfwTerminate();
+    }
+
+    void VkResourceManager::InitParams()
+    {
+        this->mesh.AddTriangle({
+            Vertex{ { 0.0f, -0.5f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
+            Vertex{ { 0.0f, -0.5f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
+            Vertex{ { 0.0f, -0.5f, 0.0f }, { 0.0f, 0.0f, 0.0f } }
+        });
     }
 
     void VkResourceManager::CreateWindow()
@@ -684,7 +695,7 @@ namespace ATR
     {
         // TODO make this more flexible
         ATR_LOG("Creating Vertex Buffer...")
-        VkDeviceSize bufferSize = sizeof(VkResourceManager::vertices[0]) * VkResourceManager::vertices.size();
+        VkDeviceSize bufferSize = sizeof(this->mesh.GetVertices()[0]) * this->mesh.GetVertices().size();
 
         VkBuffer stagingBuffer;                         // Buffer on CPU, temporary, host-visible
         VkDeviceMemory stagingBufferMemory;
@@ -693,7 +704,7 @@ namespace ATR
 
         void* data;
         vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-            memcpy(data, VkResourceManager::vertices.data(), static_cast<size_t>(bufferSize));
+            memcpy(data, this->mesh.GetVertices().data(), static_cast<size_t>(bufferSize));
         vkUnmapMemory(this->device, stagingBufferMemory);
 
         this->CreateBuffer(
@@ -713,7 +724,7 @@ namespace ATR
     void VkResourceManager::CreateIndexBuffer()
     {
         ATR_LOG("Creating Index Buffer...")
-        VkDeviceSize bufferSize = sizeof(VkResourceManager::indices[0]) * VkResourceManager::indices.size();
+        VkDeviceSize bufferSize = sizeof(this->mesh.GetIndices()[0]) * this->mesh.GetIndices().size();
 
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingBufferMemory;
@@ -722,8 +733,10 @@ namespace ATR
 
         void* data;
         vkMapMemory(this->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-            memcpy(data, VkResourceManager::indices.data(), static_cast<size_t>(bufferSize));
+            memcpy(data, this->mesh.GetIndices().data(), static_cast<size_t>(bufferSize));
         vkUnmapMemory(this->device, stagingBufferMemory);
+
+        ATR_LOG(this->mesh.GetIndices().size())
 
         this->CreateBuffer(
             bufferSize,
@@ -870,6 +883,12 @@ namespace ATR
     void VkResourceManager::DrawFrame()
     {
         vkWaitForFences(this->device, 1, &this->inFlightFences[this->currentFrameIndex], VK_TRUE, UINT64_MAX);
+
+        if (this->meshStale)
+        {
+            this->UpdateImageBuffers();
+            this->meshStale = false;
+        }
 
         UInt imageIndex;
         VkResult result = vkAcquireNextImageKHR(this->device, this->swapchain, UINT64_MAX, this->imageAvailableSemaphores[this->currentFrameIndex], VK_NULL_HANDLE, &imageIndex);
@@ -1435,7 +1454,7 @@ namespace ATR
 
             vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSets[this->currentFrameIndex], 0, nullptr);
 
-            vkCmdDrawIndexed(commandBuffer, VkResourceManager::indices.size(), 1, 0, 0, 0);
+            vkCmdDrawIndexed(commandBuffer, this->mesh.GetIndices().size(), 1, 0, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
 
@@ -1497,6 +1516,46 @@ namespace ATR
         CreateImageViews();
         CreateDepthBuffer();
         CreateFrameBuffers();
+    }
+
+    void VkResourceManager::UpdateImageBuffers()
+    {
+        ATR_LOG("Updating Mesh Infos...")
+        VkDeviceSize indexBufferSize = sizeof(UInt) * this->mesh.GetIndices().size();
+
+        VkBuffer indexStagingBuffer;
+        VkDeviceMemory indexStagingBufferMemory;
+
+        this->CreateStagingBuffer(indexBufferSize, indexStagingBuffer, indexStagingBufferMemory);
+
+        void* indexData;
+        vkMapMemory(this->device, indexStagingBufferMemory, 0, indexBufferSize, 0, &indexData);
+        memcpy(indexData, this->mesh.GetIndices().data(), static_cast<size_t>(indexBufferSize));
+        vkUnmapMemory(this->device, indexStagingBufferMemory);
+        
+        this->CopyBuffer(indexStagingBuffer, this->indexBuffer, indexBufferSize);
+
+        vkDestroyBuffer(this->device, indexStagingBuffer, nullptr);
+        vkFreeMemory(this->device, indexStagingBufferMemory, nullptr);
+
+        VkDeviceSize vertexBufferSize = sizeof(Vertex) * this->mesh.GetVertices().size();
+
+        VkBuffer vertexStagingBuffer;
+        VkDeviceMemory vertexStagingBufferMemory;
+
+        this->CreateStagingBuffer(vertexBufferSize, vertexStagingBuffer, vertexStagingBufferMemory);
+
+        void* vertexData;
+        vkMapMemory(this->device, vertexStagingBufferMemory, 0, vertexBufferSize, 0, &vertexData);
+        memcpy(vertexData, this->mesh.GetVertices().data(), static_cast<size_t>(vertexBufferSize));
+        vkUnmapMemory(this->device, vertexStagingBufferMemory);
+
+        ATR_LOG(this->mesh.GetVertices().size())
+
+            this->CopyBuffer(vertexStagingBuffer, this->vertexBuffer, vertexBufferSize);
+
+        vkDestroyBuffer(this->device, vertexStagingBuffer, nullptr);
+        vkFreeMemory(this->device, vertexStagingBufferMemory, nullptr);
     }
 
     std::vector<char> VkResourceManager::ReadShaderCode(const char* path)

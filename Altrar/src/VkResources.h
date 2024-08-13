@@ -23,6 +23,7 @@ namespace ATR
         void CleanUp();
 
         // Initializing Vulkan
+        void InitParams();
         void CreateWindow();
         void CreateInstance();
         void SetupDebugMessenger();
@@ -51,6 +52,7 @@ namespace ATR
         // Update
         void DrawFrame();
         void RecreateSwapchain();
+        void UpdateImageBuffers();
 
         // Clean Up
         void CleanUpSwapchain();
@@ -61,7 +63,8 @@ namespace ATR
             VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
             VkDebugUtilsMessageTypeFlagsEXT messageType,
             const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-            void* pUserData);
+            void* pUserData
+        );
         VkResult CreateDebugUtilsMessengerEXT(
             VkInstance instance,
             const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
@@ -103,6 +106,9 @@ namespace ATR
 
         // Getter/Setters
         inline String GetUpdateInfo() { return this->updateInfo; }
+
+        // Proxy
+        inline void AddTriangle(std::array<Vertex, 3> vertices) { this->mesh.AddTriangle(vertices); this->meshStale = true; }
 
     private:
         // Configs
@@ -195,7 +201,7 @@ namespace ATR
         static inline constexpr UInt maxFramesInFlight = 2;
 
         // Temporary Global Variables
-        static inline const std::vector<Vertex> vertices = {
+        /*static inline const std::vector<Vertex> vertices = {
             {{-0.5f, -0.5f, 0.f}, {1.0f, 0.0f, 0.0f}},
             {{0.5f, -0.5f, 0.f}, {0.0f, 1.0f, 0.0f}},
             {{0.5f, 0.5f, 0.f}, {0.0f, 0.0f, 1.0f}},
@@ -210,7 +216,12 @@ namespace ATR
         static inline const std::vector<UInt> indices = {
             0, 1, 2, 2, 3, 0,
             4, 5, 6, 6, 7, 4
-        };
+        };*/
+
+        Mesh mesh;
+
+        // Update Infos
+        bool meshStale = false;
     };
 
 }

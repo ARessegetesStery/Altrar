@@ -1,0 +1,25 @@
+#include "atrpch.h"
+#include "Mesh.h"
+
+namespace ATR
+{
+    void Mesh::AddTriangle(std::array<Vertex, 3> vertices)
+    {
+        for (auto& vertex : vertices)
+        {
+            auto foundIter = std::find(this->vertices.begin(), this->vertices.end(), vertex);
+            UInt newIndex = 0;
+            if (foundIter == this->vertices.cend())
+            {
+                UInt size = this->vertices.size();
+                newIndex = size;
+                this->vertices.push_back(vertex);
+            }
+            else
+                newIndex = static_cast<UInt>(foundIter - this->vertices.begin());
+
+            ATR_LOG(newIndex)
+            this->indices.push_back(newIndex);
+        }
+    }
+}

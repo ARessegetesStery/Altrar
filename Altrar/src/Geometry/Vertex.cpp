@@ -21,7 +21,12 @@ namespace ATR
             .location = 1,
             .binding = 0,
             .format = VK_FORMAT_R32G32B32_SFLOAT,
-            .offset = offsetof(Vertex, Color)
+            .offset = offsetof(Vertex, color)
         }
     };
+
+    bool operator==(const Vertex& v1, const Vertex& v2)
+    {
+        return v1.pos == v2.pos && v1.color == v2.color;
+    }
 }

@@ -18,10 +18,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include "glfw/glfw3.h"
 
-// Loading
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb/stb_image.h"
-
 // ATR Core
 #include "ATRException.h"
 #include "ATROSSpec.h"

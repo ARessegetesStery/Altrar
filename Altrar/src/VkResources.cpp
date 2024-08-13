@@ -932,10 +932,15 @@ namespace ATR
 
     void VkResourceManager::CleanUpSwapchain()
     {
-        for (const auto& view : swapchainImageViews)
+        for (const auto& view : this->swapchainImageViews)
             vkDestroyImageView(this->device, view, nullptr);
-        for (const auto& framebuffer : swapchainFrameBuffers)
+        for (const auto& framebuffer : this->swapchainFrameBuffers)
             vkDestroyFramebuffer(this->device, framebuffer, nullptr);
+
+        vkDestroyImageView(this->device, this->depthImageView, nullptr);
+        vkDestroyImage(this->device, this->depthImage, nullptr);
+        vkFreeMemory(this->device, this->depthImageMemory, nullptr);
+
         vkDestroySwapchainKHR(this->device, this->swapchain, nullptr);
     }
 
@@ -1490,6 +1495,7 @@ namespace ATR
 
         CreateSwapchain();
         CreateImageViews();
+        CreateDepthBuffer();
         CreateFrameBuffers();
     }
 

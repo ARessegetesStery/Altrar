@@ -14,6 +14,7 @@ namespace ATR
 
         this->width = config.width;
         this->height = config.height;
+        this->relLocation = config.location;
     }
 
     void VkResourceManager::Init()
@@ -438,7 +439,7 @@ namespace ATR
         // Compile Shaders
         // TODO refactor and define paths in ATRConst.h
         ATR_LOG_SUB("Compiling Shaders...")
-        ATR::OS::Execute("scripts/platform/windows/compile-shader.bat");
+        this->CompileShaders();
 
         std::vector<char> vertShaderCode = ReadShaderCode("bin/shaders/vert.spv");
         std::vector<char> fragShaderCode = ReadShaderCode("bin/shaders/frag.spv");
@@ -1556,6 +1557,19 @@ namespace ATR
 
         vkDestroyBuffer(this->device, vertexStagingBuffer, nullptr);
         vkFreeMemory(this->device, vertexStagingBufferMemory, nullptr);
+    }
+
+    void VkResourceManager::CompileShaders()
+    {
+        const String& path = this->relLocation;
+        const String sep = (path == "") ? "" : "\\";
+        const String compilerPath = path + sep + "..\\vendor\\bin\\Windows\\glslc.exe";
+
+        ATR::OS::Execute("rmdir /s /q bin\\shaders");
+        ATR::OS::Execute("mkdir bin");
+        ATR::OS::Execute("mkdir bin\\shaders");
+        ATR::OS::Execute(compilerPath + " " + "shaders\\shader.vert -o bin\\shaders\\vert.spv");
+        ATR::OS::Execute(compilerPath + " " + "shaders\\shader.frag -o bin\\shaders\\frag.spv");
     }
 
     std::vector<char> VkResourceManager::ReadShaderCode(const char* path)

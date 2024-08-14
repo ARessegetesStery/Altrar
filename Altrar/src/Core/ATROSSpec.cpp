@@ -28,7 +28,7 @@ namespace ATR
 #if defined _WIN32
         // Since Windows requires "\" for file systems, and it needs to be escaped, first insert \\ for every "\"
         ATR_LOG_ACTION(("Executing Command: " + cmd))
-        std::replace(cmd.begin(), cmd.end(), '/', '\\');
+        //std::replace(cmd.begin(), cmd.end(), '/', '\\');
         system(cmd.c_str());
         ATR_LOG_ACTION_END
 #endif

@@ -96,6 +96,7 @@ namespace ATR
         inline VkFormat FindDepthFormat();
         inline bool HasStencilComponent(VkFormat format);
 
+        void CompileShaders();
         std::vector<char> ReadShaderCode(const char* path);
         VkShaderModule CreateShaderModule(const std::vector<char>& code);
 
@@ -115,6 +116,7 @@ namespace ATR
         // Configs
         UInt width, height;
         Bool enabledValidation;
+        String relLocation;
         std::vector<const char*> instanceExtensions;
         std::vector<const char*> validationLayers;
 

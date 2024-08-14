@@ -7,6 +7,7 @@ namespace ATR
     {
         UInt width, height;
         Bool enableValidation;
+        String location;
         std::vector<String> validationLayers;
 
         Config();

@@ -44,6 +44,7 @@ namespace ATR
     Config::Config() : 
         width(800), height(600),
         enableValidation(true),
+        location(""),
         validationLayers({"VK_LAYER_KHRONOS_validation"})
     {
         const String configPath = "config.yaml";
@@ -61,6 +62,7 @@ namespace ATR
             LOAD_DATA_FROM_YAML_NOERROR(this->width, root, width, UInt);
             LOAD_DATA_FROM_YAML_NOERROR(this->height, root, height, UInt);
             LOAD_DATA_FROM_YAML_NOERROR(this->enableValidation, root, validation, Bool);
+            LOAD_DATA_FROM_YAML_NOERROR(this->location, root, location, String);
             if (this->enableValidation)
             {
                 LOAD_NODE_FROM_YAML_NOERROR(validationLayerNode, root, validation-layers);

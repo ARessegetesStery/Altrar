@@ -112,11 +112,7 @@ namespace ATR
 
     void VkResourceManager::InitParams()
     {
-        this->mesh.AddTriangle({
-            Vertex{ { 0.0f, -0.5f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
-            Vertex{ { 0.0f, -0.5f, 0.0f }, { 0.0f, 0.0f, 0.0f } },
-            Vertex{ { 0.0f, -0.5f, 0.0f }, { 0.0f, 0.0f, 0.0f } }
-        });
+
     }
 
     void VkResourceManager::CreateWindow()

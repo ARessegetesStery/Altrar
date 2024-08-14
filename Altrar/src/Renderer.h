@@ -21,12 +21,14 @@ namespace ATR
         void Update();
         void Cleanup();
 
+        inline Bool ShouldClose() const { return this->vkResources.ShouldClose(); }
+
         // Helpers
         void UpdateStats();
 
         // Proxy: modify mesh
         inline void AddTriangle(std::array<Vertex, 3> vertices) { this->vkResources.AddTriangle(vertices); }
-        void UpdateMesh(const Mesh& mesh);
+        inline void UpdateMesh(const Mesh& mesh) { this->vkResources.UpdateMesh(mesh); }
 
     private:
         Config config;

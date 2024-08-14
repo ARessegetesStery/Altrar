@@ -18,7 +18,6 @@ namespace ATR
             else
                 newIndex = static_cast<UInt>(foundIter - this->vertices.begin());
 
-            ATR_LOG(newIndex)
             this->indices.push_back(newIndex);
         }
     }

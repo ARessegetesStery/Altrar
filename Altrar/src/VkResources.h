@@ -19,7 +19,7 @@ namespace ATR
         // Major Components
         void Init();
         void UpdateFrame();
-        inline Bool ShouldClose() { return glfwWindowShouldClose(this->window); }
+        inline Bool ShouldClose() const { return glfwWindowShouldClose(this->window); }
         void CleanUp();
 
         // Initializing Vulkan

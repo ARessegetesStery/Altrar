@@ -14,6 +14,8 @@ namespace ATR
         inline const std::vector<UInt>& GetIndices() const { return this->indices; }
         inline const std::vector<Vertex>& GetVertices() const { return this->vertices; }
 
+        inline void UpdateVertexPos(UInt index, Vec3 pos) { this->vertices[index].pos = pos; }
+
         inline void Clear() { this->indices.clear(); this->vertices.clear(); }
 
         void UpdateMesh(const Mesh& mesh);

@@ -14,7 +14,10 @@ namespace ATR
         {
             InitRenderer();
             InitVulkan();
-            Update();
+
+            while (!this->vkResources.ShouldClose())
+                Update();
+
             Cleanup();
         }
         catch(const Exception& e)
@@ -38,11 +41,8 @@ namespace ATR
 
     void Renderer::Update()
     {
-        while (!this->vkResources.ShouldClose())
-        {
-            this->vkResources.UpdateFrame();
-            UpdateStats();
-        }
+        this->vkResources.UpdateFrame();
+        UpdateStats();
     }
 
     void Renderer::Cleanup()
@@ -60,10 +60,5 @@ namespace ATR
             << std::fixed << std::setfill(' ') << std::right << std::setw(7) << std::setprecision(2) << fps << " ] "
             << this->vkResources.GetUpdateInfo())
         ++frameCount;
-    }
-
-    void Renderer::UpdateMesh(const Mesh& mesh)
-    {
-         this->vkResources.UpdateMesh(mesh);
     }
 }

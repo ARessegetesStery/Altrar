@@ -733,8 +733,6 @@ namespace ATR
             memcpy(data, this->mesh.GetIndices().data(), static_cast<size_t>(bufferSize));
         vkUnmapMemory(this->device, stagingBufferMemory);
 
-        ATR_LOG(this->mesh.GetIndices().size())
-
         this->CreateBuffer(
             bufferSize,
             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
@@ -1482,7 +1480,8 @@ namespace ATR
         Float time = std::chrono::duration<Float, std::chrono::seconds::period>(currentTime - startTime).count();
 
         UniformBufferObject ubo;
-        ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.f), glm::vec3(0.0f, 0.0f, 1.0f));
+        //ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.model = glm::mat4(1.0f);
         ubo.view = glm::lookAt(glm::vec3(2.f, 2.f, 2.f), glm::vec3(0.f, 0.f, 0.f), glm::vec3(0.f, 0.f, 1.f));
         auto swapExtent = this->swapChainConfig.extent;
         ubo.proj = glm::perspective(glm::radians(45.f), static_cast<float>(swapExtent.width) / static_cast<float>(swapExtent.height), 0.1f, 10.f);
@@ -1547,9 +1546,7 @@ namespace ATR
         memcpy(vertexData, this->mesh.GetVertices().data(), static_cast<size_t>(vertexBufferSize));
         vkUnmapMemory(this->device, vertexStagingBufferMemory);
 
-        ATR_LOG(this->mesh.GetVertices().size())
-
-            this->CopyBuffer(vertexStagingBuffer, this->vertexBuffer, vertexBufferSize);
+        this->CopyBuffer(vertexStagingBuffer, this->vertexBuffer, vertexBufferSize);
 
         vkDestroyBuffer(this->device, vertexStagingBuffer, nullptr);
         vkFreeMemory(this->device, vertexStagingBufferMemory, nullptr);
